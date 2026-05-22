@@ -16,6 +16,18 @@ export const searchGoals = async (regNo: string) => {
     }
 };
 
+export const searchDevelopmentalGoals = async (regNo: string) => {
+    try {
+        const response = await axios.get(`${API_URL}/developmental-goals/`, {
+            params: { reg_no: regNo }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching developmental goals:", error);
+        throw error;
+    }
+};
+
 export const uploadFile = async (file: any) => {
     try {
         const formData = new FormData();
