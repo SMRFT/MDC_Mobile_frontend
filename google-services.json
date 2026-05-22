@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723536567054",
+    "project_id": "otp-login-e54c1",
+    "storage_bucket": "otp-login-e54c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723536567054:android:d6486676ff92b7c459955f",
+        "android_client_info": {
+          "package_name": "com.manibalan.MDC_Mobile_Frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAYN_1mqsVi8A067_XYMasQl-zkfpkvzkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
