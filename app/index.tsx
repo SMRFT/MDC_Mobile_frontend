@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { 
-  StyleSheet, TextInput, TouchableOpacity, View, 
-  ActivityIndicator, Alert, Dimensions, Image, 
+import {
+  StyleSheet, TextInput, TouchableOpacity, View,
+  ActivityIndicator, Alert, Dimensions, Image,
   KeyboardAvoidingView, Platform, ScrollView, Modal, FlatList
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +22,8 @@ export default function LoginScreen() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [changePassVisible, setChangePassVisible] = useState(false);
+  
+  const [showPassword, setShowPassword] = useState(false);
 
   // Change Password State
   const [cpMobile, setCpMobile] = useState('');
@@ -30,8 +32,12 @@ export default function LoginScreen() {
   const [cpConfirmPass, setCpConfirmPass] = useState('');
   const [cpLoading, setCpLoading] = useState(false);
   
+  const [showCpOldPass, setShowCpOldPass] = useState(false);
+  const [showCpNewPass, setShowCpNewPass] = useState(false);
+  const [showCpConfirmPass, setShowCpConfirmPass] = useState(false);
+
   const { resolvedTheme } = useTheme();
-  
+
   const accentColor = '#10b981'; // Emerald Green from photo
   const darkBg = '#0a1220'; // Deep dark blue background
   const cardBg = '#161d2f'; // Card background
@@ -89,227 +95,239 @@ export default function LoginScreen() {
 
   const handleChangePasswordSubmit = async () => {
     if (!cpMobile || !cpOldPass || !cpNewPass || !cpConfirmPass) {
-        Alert.alert('Required', 'Please fill all fields.');
-        return;
+      Alert.alert('Required', 'Please fill all fields.');
+      return;
     }
     if (cpNewPass !== cpConfirmPass) {
-        Alert.alert('Error', 'New passwords do not match.');
-        return;
+      Alert.alert('Error', 'New passwords do not match.');
+      return;
     }
 
     setCpLoading(true);
     try {
-        await axios.post(`${Config.API_BASE_URL}/change-password/`, {
-            mobile: cpMobile,
-            old_password: cpOldPass,
-            new_password: cpNewPass
-        });
-        Alert.alert('Success', 'Password changed successfully!');
-        setChangePassVisible(false);
-        // Clear state
-        setCpMobile(''); setCpOldPass(''); setCpNewPass(''); setCpConfirmPass('');
+      await axios.post(`${Config.API_BASE_URL}/change-password/`, {
+        mobile: cpMobile,
+        old_password: cpOldPass,
+        new_password: cpNewPass
+      });
+      Alert.alert('Success', 'Password changed successfully!');
+      setChangePassVisible(false);
+      // Clear state
+      setCpMobile(''); setCpOldPass(''); setCpNewPass(''); setCpConfirmPass('');
     } catch (err: any) {
-        const msg = err.response?.data?.error || 'Change password failed.';
-        Alert.alert('Error', msg);
+      const msg = err.response?.data?.error || 'Change password failed.';
+      Alert.alert('Error', msg);
     } finally {
-        setCpLoading(false);
+      setCpLoading(false);
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: darkBg }]}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
             <View style={[styles.logoCircle, { backgroundColor: accentColor }]}>
-                <Image 
-                    source={require('../assets/images/icon.png')} 
-                    style={styles.logo} 
-                    resizeMode="contain" 
-                />
+              <Image
+                source={require('../assets/images/icon.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </View>
             <ThemedText style={[styles.headerTitle, { color: accentColor }]}>MDC Portal</ThemedText>
-            <ThemedText style={styles.headerSub}>Patient Care Management</ThemedText>
+            <ThemedText style={styles.headerSub}>Child Care Management</ThemedText>
           </View>
 
           <View style={[styles.loginCard, { backgroundColor: cardBg }]}>
             <View style={styles.inputSection}>
-                <ThemedText style={styles.inputLabel}>MOBILE NUMBER</ThemedText>
-                <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
-                   <Ionicons name="call-outline" size={20} color={accentColor} />
-                   <TextInput 
-                      style={styles.input} 
-                      placeholder="Enter mobile number" 
-                      placeholderTextColor="#4b5563"
-                      keyboardType="phone-pad"
-                      value={phone}
-                      onChangeText={setPhone}
-                   />
-                </View>
+              <ThemedText style={styles.inputLabel}>MOBILE NUMBER</ThemedText>
+              <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
+                <Ionicons name="call-outline" size={20} color={accentColor} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter mobile number"
+                  placeholderTextColor="#4b5563"
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={setPhone}
+                />
+              </View>
             </View>
 
             <View style={styles.inputSection}>
-                <ThemedText style={styles.inputLabel}>PASSWORD</ThemedText>
-                <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
-                   <Ionicons name="lock-closed-outline" size={20} color={accentColor} />
-                   <TextInput 
-                      style={styles.input} 
-                      placeholder="••••••••" 
-                      placeholderTextColor="#4b5563"
-                      secureTextEntry
-                      value={password}
-                      onChangeText={setPassword}
-                   />
-                </View>
+              <ThemedText style={styles.inputLabel}>PASSWORD</ThemedText>
+              <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={accentColor} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#4b5563"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 5 }}>
+                  <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity style={styles.loginBtn} onPress={handleFetchProfiles} disabled={loading}>
-                <LinearGradient
-                    colors={['#10b981', '#059669']}
-                    style={styles.btnGradient}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="white" />
-                    ) : (
-                        <ThemedText style={styles.btnText}>Login</ThemedText>
-                    )}
-                </LinearGradient>
+              <LinearGradient
+                colors={['#10b981', '#059669']}
+                style={styles.btnGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <ThemedText style={styles.btnText}>Login</ThemedText>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.supportRow}>
-                <TouchableOpacity onPress={handleForgotPassword}>
-                    <ThemedText style={styles.forgotText}>Forgot Password?</ThemedText>
-                </TouchableOpacity>
-                <View style={styles.dot} />
-                <TouchableOpacity onPress={() => setChangePassVisible(true)}>
-                    <ThemedText style={styles.forgotText}>Change Password?</ThemedText>
-                </TouchableOpacity>
+              <TouchableOpacity onPress={handleForgotPassword}>
+                <ThemedText style={styles.forgotText}>Forgot Password?</ThemedText>
+              </TouchableOpacity>
+              <View style={styles.dot} />
+              <TouchableOpacity onPress={() => setChangePassVisible(true)}>
+                <ThemedText style={styles.forgotText}>Change Password?</ThemedText>
+              </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.footer}>
-              <ThemedText style={styles.footerText}>New here? </ThemedText>
-              <Link href="/register" asChild>
-                <TouchableOpacity>
-                   <ThemedText style={[styles.footerLink, { color: accentColor }]}>Create account</ThemedText>
-                </TouchableOpacity>
-              </Link>
+            <ThemedText style={styles.footerText}>New here? </ThemedText>
+            <Link href="/register" asChild>
+              <TouchableOpacity>
+                <ThemedText style={[styles.footerLink, { color: accentColor }]}>Create account</ThemedText>
+              </TouchableOpacity>
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       <Modal transparent visible={changePassVisible} animationType="slide">
-          <View style={styles.modalOverlay}>
-              <View style={[styles.profileSheet, { backgroundColor: cardBg }]}>
-                  <ThemedText style={[styles.sheetTitle, { color: accentColor }]}>Change Password</ThemedText>
-                  <ThemedText style={styles.sheetSub}>Update your portal access credentials</ThemedText>
-                  
-                  <View style={styles.inputSection}>
-                      <ThemedText style={styles.inputLabel}>MOBILE NUMBER</ThemedText>
-                      <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
-                          <TextInput 
-                              style={styles.input} 
-                              placeholder="Registered mobile" 
-                              placeholderTextColor="#4b5563"
-                              keyboardType="phone-pad"
-                              value={cpMobile}
-                              onChangeText={setCpMobile}
-                          />
-                      </View>
-                  </View>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.profileSheet, { backgroundColor: cardBg }]}>
+            <ThemedText style={[styles.sheetTitle, { color: accentColor }]}>Change Password</ThemedText>
+            <ThemedText style={styles.sheetSub}>Update your portal access credentials</ThemedText>
 
-                  <View style={styles.inputSection}>
-                      <ThemedText style={styles.inputLabel}>CURRENT PASSWORD</ThemedText>
-                      <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
-                          <TextInput 
-                              style={styles.input} 
-                              placeholder="••••••••" 
-                              placeholderTextColor="#4b5563"
-                              secureTextEntry
-                              value={cpOldPass}
-                              onChangeText={setCpOldPass}
-                          />
-                      </View>
-                  </View>
-
-                  <View style={styles.inputSection}>
-                      <ThemedText style={styles.inputLabel}>NEW PASSWORD</ThemedText>
-                      <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
-                          <TextInput 
-                              style={styles.input} 
-                              placeholder="••••••••" 
-                              placeholderTextColor="#4b5563"
-                              secureTextEntry
-                              value={cpNewPass}
-                              onChangeText={setCpNewPass}
-                          />
-                      </View>
-                  </View>
-
-                  <View style={styles.inputSection}>
-                      <ThemedText style={styles.inputLabel}>CONFIRM NEW PASSWORD</ThemedText>
-                      <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
-                          <TextInput 
-                              style={styles.input} 
-                              placeholder="••••••••" 
-                              placeholderTextColor="#4b5563"
-                              secureTextEntry
-                              value={cpConfirmPass}
-                              onChangeText={setCpConfirmPass}
-                          />
-                      </View>
-                  </View>
-
-                  <TouchableOpacity style={styles.loginBtn} onPress={handleChangePasswordSubmit} disabled={cpLoading}>
-                    <LinearGradient colors={['#10b981', '#059669']} style={styles.btnGradient}>
-                        {cpLoading ? <ActivityIndicator color="white" /> : <ThemedText style={styles.btnText}>Update Password</ThemedText>}
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.closeBtn} onPress={() => setChangePassVisible(false)}>
-                      <ThemedText style={{ color: '#4b5563', fontWeight: '700' }}>Cancel</ThemedText>
-                  </TouchableOpacity>
+            <View style={styles.inputSection}>
+              <ThemedText style={styles.inputLabel}>MOBILE NUMBER</ThemedText>
+              <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Registered mobile"
+                  placeholderTextColor="#4b5563"
+                  keyboardType="phone-pad"
+                  value={cpMobile}
+                  onChangeText={setCpMobile}
+                />
               </View>
+            </View>
+
+            <View style={styles.inputSection}>
+              <ThemedText style={styles.inputLabel}>CURRENT PASSWORD</ThemedText>
+              <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#4b5563"
+                  secureTextEntry={!showCpOldPass}
+                  value={cpOldPass}
+                  onChangeText={setCpOldPass}
+                />
+                <TouchableOpacity onPress={() => setShowCpOldPass(!showCpOldPass)} style={{ padding: 5 }}>
+                  <Ionicons name={showCpOldPass ? "eye-outline" : "eye-off-outline"} size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputSection}>
+              <ThemedText style={styles.inputLabel}>NEW PASSWORD</ThemedText>
+              <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#4b5563"
+                  secureTextEntry={!showCpNewPass}
+                  value={cpNewPass}
+                  onChangeText={setCpNewPass}
+                />
+                <TouchableOpacity onPress={() => setShowCpNewPass(!showCpNewPass)} style={{ padding: 5 }}>
+                  <Ionicons name={showCpNewPass ? "eye-outline" : "eye-off-outline"} size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputSection}>
+              <ThemedText style={styles.inputLabel}>CONFIRM NEW PASSWORD</ThemedText>
+              <View style={[styles.innerInput, { backgroundColor: inputBg }]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#4b5563"
+                  secureTextEntry={!showCpConfirmPass}
+                  value={cpConfirmPass}
+                  onChangeText={setCpConfirmPass}
+                />
+                <TouchableOpacity onPress={() => setShowCpConfirmPass(!showCpConfirmPass)} style={{ padding: 5 }}>
+                  <Ionicons name={showCpConfirmPass ? "eye-outline" : "eye-off-outline"} size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.loginBtn} onPress={handleChangePasswordSubmit} disabled={cpLoading}>
+              <LinearGradient colors={['#10b981', '#059669']} style={styles.btnGradient}>
+                {cpLoading ? <ActivityIndicator color="white" /> : <ThemedText style={styles.btnText}>Update Password</ThemedText>}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.closeBtn} onPress={() => setChangePassVisible(false)}>
+              <ThemedText style={{ color: '#4b5563', fontWeight: '700' }}>Cancel</ThemedText>
+            </TouchableOpacity>
           </View>
+        </View>
       </Modal>
 
       <Modal transparent visible={modalVisible} animationType="fade">
-          <View style={styles.modalOverlay}>
-              <View style={[styles.profileSheet, { backgroundColor: cardBg }]}>
-                  <ThemedText style={[styles.sheetTitle, { color: accentColor }]}>Select Profile</ThemedText>
-                  <ThemedText style={styles.sheetSub}>Found multiple records for this number.</ThemedText>
-                  
-                  <FlatList 
-                    data={profiles}
-                    keyExtractor={(item) => item.registration_number}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity 
-                            style={[styles.profileItem, { backgroundColor: inputBg }]}
-                            onPress={() => handleProfileSelect(item.registration_number)}
-                        >
-                            <View style={[styles.avatar, { backgroundColor: accentColor + '20' }]}>
-                                <ThemedText style={{ color: accentColor, fontWeight: '800' }}>{item.name[0]}</ThemedText>
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <ThemedText style={styles.profileName}>{item.name}</ThemedText>
-                                <ThemedText style={styles.profileReg}>{item.registration_number}</ThemedText>
-                            </View>
-                            <Ionicons name="chevron-forward" size={20} color={accentColor} />
-                        </TouchableOpacity>
-                    )}
-                    style={{ maxHeight: height * 0.4 }}
-                  />
-                  <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
-                      <ThemedText style={{ color: '#4b5563', fontWeight: '700' }}>Cancel</ThemedText>
-                  </TouchableOpacity>
-              </View>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.profileSheet, { backgroundColor: cardBg }]}>
+            <ThemedText style={[styles.sheetTitle, { color: accentColor }]}>Select Profile</ThemedText>
+            <ThemedText style={styles.sheetSub}>Found multiple records for this number.</ThemedText>
+
+            <FlatList
+              data={profiles}
+              keyExtractor={(item) => item.registration_number}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.profileItem, { backgroundColor: inputBg }]}
+                  onPress={() => handleProfileSelect(item.registration_number)}
+                >
+                  <View style={[styles.avatar, { backgroundColor: accentColor + '20' }]}>
+                    <ThemedText style={{ color: accentColor, fontWeight: '800' }}>{item.name[0]}</ThemedText>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={styles.profileName}>{item.name}</ThemedText>
+                    <ThemedText style={styles.profileReg}>{item.registration_number}</ThemedText>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={accentColor} />
+                </TouchableOpacity>
+              )}
+              style={{ maxHeight: height * 0.4 }}
+            />
+            <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
+              <ThemedText style={{ color: '#4b5563', fontWeight: '700' }}>Cancel</ThemedText>
+            </TouchableOpacity>
           </View>
+        </View>
       </Modal>
     </View>
   );
