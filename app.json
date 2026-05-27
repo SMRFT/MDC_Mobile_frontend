@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.manibalan.mdcmobilefrontend",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -48,7 +52,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "81efb999-9599-4097-8df1-e1ad7a779dce"
+        "projectId": "fca7a746-5282-4074-a81d-76fad56bf48a"
       }
     }
   }
