@@ -18,6 +18,7 @@ function RootContent() {
         <Stack.Screen name="goals/index" options={{ headerShown: false }} />
         <Stack.Screen name="goals/development" options={{ headerShown: false }} />
         <Stack.Screen name="report" options={{ headerShown: false }} />
+        <Stack.Screen name="assessmentReport" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />

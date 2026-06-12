@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { StyleSheet, ScrollView, View, TouchableOpacity, Dimensions, Modal, Image, Alert, Platform, Linking } from 'react-native';
+import { StyleSheet, ScrollView, View, TouchableOpacity, Dimensions, Modal, Image, Alert, Platform, Linking, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
+import Config from '@/constants/Config';
+import { downloadAssessmentReport } from '@/utils/reportDownloader';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,6 +21,21 @@ export default function DetailsScreen() {
 
     const [profileVisible, setProfileVisible] = useState(false);
     const [themeMenuVisible, setThemeMenuVisible] = useState(false);
+    const [deactivating, setDeactivating] = useState(false);
+    const [downloadingAssessment, setDownloadingAssessment] = useState(false);
+
+    const handleDownloadAssessment = (regNo: string) => {
+        handleDownloadAssessmentReport(regNo);
+    };
+
+    const handleDownloadAssessmentReport = (regNo: string) => {
+        downloadAssessmentReport(
+            regNo,
+            Config.API_BASE_URL,
+            () => setDownloadingAssessment(true),
+            () => setDownloadingAssessment(false)
+        );
+    };
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardColor = useThemeColor({}, 'card');
@@ -42,10 +60,42 @@ export default function DetailsScreen() {
         return dateStr.split('T')[0];
     };
 
-    const ageData = parseJSON(registration.age);
-    const ageString = typeof ageData === 'object'
-        ? `${ageData.year}y ${ageData.months}m ${ageData.days}d`
-        : registration.age;
+    const parseAge = (ageStr: any) => {
+        if (!ageStr) return null;
+        if (typeof ageStr === 'object') return ageStr;
+        
+        try {
+            const parsed = JSON.parse(ageStr);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch (e) {}
+        
+        if (typeof ageStr === 'string' && ageStr.includes('OrderedDict')) {
+            try {
+                const matches = [...ageStr.matchAll(/\(['"]([^'"]+)['"]\s*,\s*(\d+)\)/g)];
+                const obj: any = {};
+                for (const match of matches) {
+                    obj[match[1]] = parseInt(match[2], 10);
+                }
+                if (Object.keys(obj).length > 0) return obj;
+            } catch (e) {}
+        }
+        return null;
+    };
+
+    const ageData = parseAge(registration.age);
+    const ageString = (() => {
+        if (!ageData) return registration.age || 'N/A';
+        const yrs = ageData.year || 0;
+        const mon = ageData.months || 0;
+        const parts = [];
+        if (yrs > 0) parts.push(`${yrs} yrs`);
+        if (mon > 0) parts.push(`${mon} mon`);
+        if (parts.length === 0) {
+            if (ageData.days) return `${ageData.days} days`;
+            return '0 yrs';
+        }
+        return parts.join(', ');
+    })();
 
     const ThemeDropdown = () => (
         <Modal
@@ -127,6 +177,26 @@ export default function DetailsScreen() {
                         <InfoItem label="Address" value={registration.address} icon="location-outline" />
                         <InfoItem label="Email" value={registration.mail_id} icon="mail-outline" last />
                     </View>
+
+                    {/* Account Settings */}
+                    <View style={[styles.section, { backgroundColor: cardColor, borderColor: '#fee2e2', borderWidth: 1 }]}>
+                        <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#ef4444' }]}>Account Settings</ThemedText>
+                        <TouchableOpacity 
+                            style={[styles.infoItem, { borderBottomWidth: 0, opacity: deactivating ? 0.6 : 1 }]}
+                            onPress={handleDeactivateAccount}
+                            disabled={deactivating}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="trash-outline" size={18} color="#ef4444" style={styles.infoIcon} />
+                            <View style={{ flex: 1 }}>
+                                <ThemedText style={[styles.infoLabel, { color: '#ef4444' }]}>DEACTIVATE ACCOUNT</ThemedText>
+                                <ThemedText style={[styles.infoValue, { color: textSecondary, fontSize: 13, fontWeight: '500', marginTop: 2 }]} numberOfLines={2}>
+                                    Permanently deactivate your portal access
+                                </ThemedText>
+                            </View>
+                            <Ionicons name="chevron-forward" size={16} color="#ef4444" style={{ opacity: 0.7 }} />
+                        </TouchableOpacity>
+                    </View>
                 </ScrollView>
             </ThemedView>
         </Modal>
@@ -146,6 +216,43 @@ export default function DetailsScreen() {
             [
                 { text: "Cancel", style: "cancel" },
                 { text: "Logout", style: "destructive", onPress: () => router.replace('/') }
+            ]
+        );
+    };
+
+    const handleDeactivateAccount = () => {
+        const confirmDeactivate = () => {
+            setDeactivating(true);
+            axios.post(`${Config.API_BASE_URL}/deactivate-account/`, {
+                reg_no: registration.registration_number
+            })
+            .then(() => {
+                setProfileVisible(false);
+                Alert.alert("Account Deactivated", "Your account has been successfully deactivated.");
+                router.replace('/');
+            })
+            .catch((err) => {
+                const msg = err.response?.data?.error || "Failed to deactivate account. Please try again.";
+                Alert.alert("Error", msg);
+            })
+            .finally(() => {
+                setDeactivating(false);
+            });
+        };
+
+        if (Platform.OS === 'web') {
+            if (confirm("Are you sure you want to deactivate your account? This action cannot be undone and will log you out.")) {
+                confirmDeactivate();
+            }
+            return;
+        }
+
+        Alert.alert(
+            "Deactivate Account",
+            "Are you sure you want to deactivate your account? This action cannot be undone and you will be logged out immediately.",
+            [
+                { text: "Cancel", style: "cancel" },
+                { text: "Deactivate", style: "destructive", onPress: confirmDeactivate }
             ]
         );
     };
@@ -262,6 +369,17 @@ export default function DetailsScreen() {
                             <Ionicons name="document-text" size={24} color="white" />
                         </View>
                         <ThemedText style={styles.btnText}>History Report</ThemedText>
+                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.dashboardBtn, { backgroundColor: '#0369a1', marginTop: 12 }]}
+                        onPress={() => router.push({ pathname: '/assessmentReport' as any, params: { regNo: registration.registration_number } })}
+                    >
+                        <View style={styles.btnIcon}>
+                            <Ionicons name="analytics" size={24} color="white" />
+                        </View>
+                        <ThemedText style={styles.btnText}>Assessment Report</ThemedText>
                         <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
                     </TouchableOpacity>
                 </View>

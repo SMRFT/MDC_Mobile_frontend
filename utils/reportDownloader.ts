@@ -270,8 +270,8 @@ export function buildReportHTML(data: any): string {
       Dch, DNB (pead)<br/>Paediatrician and play therapist<br/>Milestones Developmental Center
     </div>
     <div class="footer-col">
-      <strong>Ms. K. Devika,</strong><br/>
-      Clinical Psychologist,<br/>Special Educator for Autism Child<br/>MDC
+      <strong>Ms. Sivashankari</strong><br/>
+      M.sc Clinical Psychology, B.sc PICS<br/>Psychologist<br/>Milestones Developmental Center
     </div>
   </div>
 </body>
@@ -302,6 +302,30 @@ export async function downloadReport(
     // no native file-system module needed, works in Expo Go.
     const pdfUrl = `${apiUrl}/history-sheet/pdf/?reg_no=${encodeURIComponent(data.registration_number)}`;
 
+    const canOpen = await Linking.canOpenURL(pdfUrl);
+    if (!canOpen) {
+      throw new Error('Cannot open the report URL on this device.');
+    }
+    await Linking.openURL(pdfUrl);
+  } catch (err: any) {
+    Alert.alert('Download Failed', err.message || 'Could not open the PDF. Please try again.');
+  } finally {
+    onFinish?.();
+  }
+}
+
+/**
+ * Downloads the combined Assessment Report PDF from the backend and opens it.
+ */
+export async function downloadAssessmentReport(
+  regNo: string,
+  apiUrl: string,
+  onStart?: () => void,
+  onFinish?: () => void,
+): Promise<void> {
+  onStart?.();
+  try {
+    const pdfUrl = `${apiUrl}/assessment-report/pdf/?reg_no=${encodeURIComponent(regNo)}`;
     const canOpen = await Linking.canOpenURL(pdfUrl);
     if (!canOpen) {
       throw new Error('Cannot open the report URL on this device.');

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "MDC Mobile App",
+    "name": "MDC (Milestone)",
     "slug": "MDC_Mobile_Frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -52,7 +52,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "fca7a746-5282-4074-a81d-76fad56bf48a"
+        "projectId": "81efb999-9599-4097-8df1-e1ad7a779dce"
       }
     }
   }

@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -287,9 +288,14 @@ function ReportBody({ data }: { data: any }) {
     <View style={s.reportBody}>
       {/* ── CLINIC HEADER ── */}
       <View style={s.clinicHeader}>
+        <Image 
+          source={require('../assets/images/icon.png')} 
+          style={s.clinicLogo} 
+          resizeMode="contain" 
+        />
         <Text style={s.clinicName}>MILESTONES DEVELOPMENTAL CENTER</Text>
         <Text style={s.clinicAddress}>59 / 37, SARADHA COLLEGE ROAD, SALEM – 636007  |  Ph: 9047033633</Text>
-        <Text style={s.reportTitle}>PSYCHOLOGICAL REPORT</Text>
+        <Text style={s.reportTitle}>HISTORY REPORT</Text>
       </View>
 
       {/* ── PATIENT INFO TABLE ── */}
@@ -399,10 +405,10 @@ function ReportBody({ data }: { data: any }) {
             </>
           ) : (
             <>
-              <Text style={s.footerName}>Ms. K. Devika,</Text>
-              <Text style={s.footerLine}>Clinical Psychologist,</Text>
-              <Text style={s.footerLine}>Special Educator for Autism Child</Text>
-              <Text style={s.footerLine}>MDC</Text>
+              <Text style={s.footerName}>Ms. Sivashankari</Text>
+              <Text style={s.footerLine}>M.sc Clinical Psychology, B.sc PICS</Text>
+              <Text style={s.footerLine}>Psychologist</Text>
+              <Text style={s.footerLine}>Milestones Developmental Center</Text>
             </>
           )}
         </View>
@@ -451,7 +457,7 @@ export default function ReportScreen() {
         <TouchableOpacity style={s.toolbarBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={s.toolbarTitle}>Psychological Report</Text>
+        <Text style={s.toolbarTitle}>History Report</Text>
         <TouchableOpacity
           style={[s.toolbarBtn, downloading && { opacity: 0.5 }]}
           onPress={handleDownload}
@@ -539,6 +545,7 @@ const s = StyleSheet.create({
 
   // ── Clinic header
   clinicHeader: { alignItems: 'center', marginBottom: 10, borderBottomWidth: 1.5, borderBottomColor: '#333', paddingBottom: 8 },
+  clinicLogo: { width: 50, height: 50, marginBottom: 6 },
   clinicName: { fontSize: 14, fontWeight: '900', color: '#2e7d32', textTransform: 'uppercase', letterSpacing: 0.8, textAlign: 'center' },
   clinicAddress: { fontSize: 9, color: '#333', marginTop: 2, textAlign: 'center' },
   reportTitle: { fontSize: 13, fontWeight: '900', textDecorationLine: 'underline', marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 },
