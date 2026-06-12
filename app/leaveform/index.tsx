@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, StyleSheet, ScrollView, TouchableOpacity, Modal,
-    TextInput, ActivityIndicator, Alert, FlatList, Dimensions, Platform, StatusBar
+    TextInput, ActivityIndicator, Alert, FlatList, Dimensions, Platform, StatusBar,
+    KeyboardAvoidingView
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -210,91 +211,99 @@ export default function LeaveDashboard() {
             </TouchableOpacity>
 
             <Modal visible={modalVisible} animationType="slide" transparent>
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.sheet, { backgroundColor: cardBg }]}>
-                        <View style={styles.sheetBar} />
-                        <View style={styles.sheetHead}>
-                            <ThemedText style={styles.sheetTitle}>New Request</ThemedText>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.sheetClose}>
-                                <Ionicons name="close" size={24} color={textSecondary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView showsVerticalScrollIndicator={false}>
-                            <View style={styles.field}>
-                                <ThemedText style={styles.fieldLabel}>Date of Leave</ThemedText>
-                                <View style={[styles.inputContainer, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor }]}>
-                                    {Platform.OS === 'web' ? (
-                                        <input
-                                            type="date"
-                                            value={leaveDate.toISOString().split('T')[0]}
-                                            min={new Date().toISOString().split('T')[0]}
-                                            onChange={(e) => setLeaveDate(new Date(e.target.value))}
-                                            style={{
-                                                padding: '14px',
-                                                backgroundColor: 'transparent',
-                                                border: 'none',
-                                                fontSize: '16px',
-                                                color: textColor,
-                                                width: '100%',
-                                                outline: 'none',
-                                                fontFamily: 'inherit'
-                                            }}
-                                        />
-                                    ) : (
-                                        <>
-                                            <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(true)}>
-                                                <Ionicons name="calendar" size={20} color="#059669" />
-                                                <ThemedText style={styles.dateBtnTxt}>{leaveDate.toLocaleDateString()}</ThemedText>
-                                            </TouchableOpacity>
-                                            {showDatePicker && (
-                                                <DateTimePicker
-                                                    value={leaveDate}
-                                                    mode="date"
-                                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                                    onChange={(event, selectedDate) => {
-                                                        setShowDatePicker(false);
-                                                        if (selectedDate) {
-                                                            setLeaveDate(selectedDate);
-                                                        }
-                                                    }}
-                                                    minimumDate={new Date()}
-                                                />
-                                            )}
-                                        </>
-                                    )}
-                                </View>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={{ flex: 1 }}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.sheet, { backgroundColor: cardBg }]}>
+                            <View style={styles.sheetBar} />
+                            <View style={styles.sheetHead}>
+                                <ThemedText style={styles.sheetTitle}>New Request</ThemedText>
+                                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.sheetClose}>
+                                    <Ionicons name="close" size={24} color={textSecondary} />
+                                </TouchableOpacity>
                             </View>
 
-                            <View style={styles.field}>
-                                <ThemedText style={styles.fieldLabel}>Reason for Absence</ThemedText>
-                                <TextInput
-                                    style={[styles.area, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor, color: textColor }]}
-                                    placeholder="Briefly explain your reason..."
-                                    value={leaveReason}
-                                    onChangeText={setLeaveReason}
-                                    multiline
-                                    numberOfLines={4}
-                                    placeholderTextColor="#94a3b8"
-                                />
-                            </View>
-
-                            <TouchableOpacity 
-                                style={[styles.submit, submitting && { opacity: 0.7 }]} 
-                                onPress={handleRequestLeave}
-                                disabled={submitting}
+                            <ScrollView 
+                                showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
                             >
-                                <LinearGradient colors={['#10b981', '#059669']} style={styles.submitGrad}>
-                                    {submitting ? (
-                                        <ActivityIndicator color="white" />
-                                    ) : (
-                                        <ThemedText style={styles.submitTxt}>Submit Request</ThemedText>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </ScrollView>
+                                <View style={styles.field}>
+                                    <ThemedText style={styles.fieldLabel}>Date of Leave</ThemedText>
+                                    <View style={[styles.inputContainer, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor }]}>
+                                        {Platform.OS === 'web' ? (
+                                            <input
+                                                type="date"
+                                                value={leaveDate.toISOString().split('T')[0]}
+                                                min={new Date().toISOString().split('T')[0]}
+                                                onChange={(e) => setLeaveDate(new Date(e.target.value))}
+                                                style={{
+                                                    padding: '14px',
+                                                    backgroundColor: 'transparent',
+                                                    border: 'none',
+                                                    fontSize: '16px',
+                                                    color: textColor,
+                                                    width: '100%',
+                                                    outline: 'none',
+                                                    fontFamily: 'inherit'
+                                                }}
+                                            />
+                                        ) : (
+                                            <>
+                                                <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(true)}>
+                                                    <Ionicons name="calendar" size={20} color="#059669" />
+                                                    <ThemedText style={styles.dateBtnTxt}>{leaveDate.toLocaleDateString()}</ThemedText>
+                                                </TouchableOpacity>
+                                                {showDatePicker && (
+                                                    <DateTimePicker
+                                                        value={leaveDate}
+                                                        mode="date"
+                                                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                                        onChange={(event, selectedDate) => {
+                                                            setShowDatePicker(false);
+                                                            if (selectedDate) {
+                                                                setLeaveDate(selectedDate);
+                                                            }
+                                                        }}
+                                                        minimumDate={new Date()}
+                                                    />
+                                                )}
+                                            </>
+                                        )}
+                                    </View>
+                                </View>
+
+                                <View style={styles.field}>
+                                    <ThemedText style={styles.fieldLabel}>Reason for Absence</ThemedText>
+                                    <TextInput
+                                        style={[styles.area, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor, color: textColor }]}
+                                        placeholder="Briefly explain your reason..."
+                                        value={leaveReason}
+                                        onChangeText={setLeaveReason}
+                                        multiline
+                                        numberOfLines={4}
+                                        placeholderTextColor="#94a3b8"
+                                    />
+                                </View>
+
+                                <TouchableOpacity 
+                                    style={[styles.submit, submitting && { opacity: 0.7 }]} 
+                                    onPress={handleRequestLeave}
+                                    disabled={submitting}
+                                >
+                                    <LinearGradient colors={['#10b981', '#059669']} style={styles.submitGrad}>
+                                        {submitting ? (
+                                            <ActivityIndicator color="white" />
+                                        ) : (
+                                            <ThemedText style={styles.submitTxt}>Submit Request</ThemedText>
+                                        )}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
         </ThemedView>
     );
