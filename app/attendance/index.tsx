@@ -13,6 +13,53 @@ import { useTheme } from '@/context/ThemeContext';
 
 const { height } = Dimensions.get('window');
 
+const parseTherapyDetails = (therapyDetails: any): any[] => {
+    if (!therapyDetails) return [];
+    if (typeof therapyDetails !== 'string') return therapyDetails;
+    
+    try {
+        return JSON.parse(therapyDetails);
+    } catch (e) {
+        // Try parsing if it has single quotes instead of double quotes
+        try {
+            const doubleQuoted = therapyDetails.replace(/'/g, '"');
+            return JSON.parse(doubleQuoted);
+        } catch (err) {}
+
+        if (therapyDetails.includes('OrderedDict')) {
+            try {
+                const matches = [...therapyDetails.matchAll(/OrderedDict\(\[([\s\S]*?)\]\)/g)];
+                const list: any[] = [];
+                for (const match of matches) {
+                    const content = match[1];
+                    const pairMatches = [...content.matchAll(/\(['"]([^'"]+)['"]\s*,\s*([\s\S]*?)\)/g)];
+                    const obj: any = {};
+                    for (const pm of pairMatches) {
+                        const key = pm[1];
+                        let val: any = pm[2].trim();
+                        if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) {
+                            val = val.substring(1, val.length - 1);
+                        } else {
+                            const num = Number(val);
+                            if (!isNaN(num)) {
+                                val = num;
+                            }
+                        }
+                        obj[key] = val;
+                    }
+                    if (Object.keys(obj).length > 0) {
+                        list.push(obj);
+                    }
+                }
+                if (list.length > 0) return list;
+            } catch (err) {
+                console.error("Error parsing OrderedDict therapy_details:", err);
+            }
+        }
+    }
+    return [];
+};
+
 export default function AttendanceHistory() {
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -71,9 +118,7 @@ export default function AttendanceHistory() {
 
     const AttendanceItem = ({ item }: { item: any }) => {
         const dateObj = new Date(item.attendance_date);
-        const therapyDetails = typeof item.therapy_details === 'string'
-            ? JSON.parse(item.therapy_details)
-            : item.therapy_details;
+        const therapyDetails = parseTherapyDetails(item.therapy_details);
             
         const isPaid = parseFloat(item.total_amount_paid) >= parseFloat(item.total_amount);
 
