@@ -437,7 +437,10 @@ export default function ReportScreen() {
 
     fetch(`${API_URL}/history-sheet/?reg_no=${encodeURIComponent(regNo)}`)
       .then(res => {
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
+        if (!res.ok) {
+            if (res.status === 404) throw new Error("No data found");
+            throw new Error(`Server returned ${res.status}`);
+        }
         return res.json();
       })
       .then(json => {

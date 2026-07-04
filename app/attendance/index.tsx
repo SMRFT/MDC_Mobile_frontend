@@ -13,6 +13,53 @@ import { useTheme } from '@/context/ThemeContext';
 
 const { height } = Dimensions.get('window');
 
+const parseTherapyDetails = (therapyDetails: any): any[] => {
+    if (!therapyDetails) return [];
+    if (typeof therapyDetails !== 'string') return therapyDetails;
+
+    try {
+        return JSON.parse(therapyDetails);
+    } catch (e) {
+        // Try parsing if it has single quotes instead of double quotes
+        try {
+            const doubleQuoted = therapyDetails.replace(/'/g, '"');
+            return JSON.parse(doubleQuoted);
+        } catch (err) { }
+
+        if (therapyDetails.includes('OrderedDict')) {
+            try {
+                const matches = [...therapyDetails.matchAll(/OrderedDict\(\[([\s\S]*?)\]\)/g)];
+                const list: any[] = [];
+                for (const match of matches) {
+                    const content = match[1];
+                    const pairMatches = [...content.matchAll(/\(['"]([^'"]+)['"]\s*,\s*([\s\S]*?)\)/g)];
+                    const obj: any = {};
+                    for (const pm of pairMatches) {
+                        const key = pm[1];
+                        let val: any = pm[2].trim();
+                        if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) {
+                            val = val.substring(1, val.length - 1);
+                        } else {
+                            const num = Number(val);
+                            if (!isNaN(num)) {
+                                val = num;
+                            }
+                        }
+                        obj[key] = val;
+                    }
+                    if (Object.keys(obj).length > 0) {
+                        list.push(obj);
+                    }
+                }
+                if (list.length > 0) return list;
+            } catch (err) {
+                console.error("Error parsing OrderedDict therapy_details:", err);
+            }
+        }
+    }
+    return [];
+};
+
 export default function AttendanceHistory() {
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -28,7 +75,7 @@ export default function AttendanceHistory() {
     const primaryColor = useThemeColor({}, 'primary');
 
     const years = useMemo(() => {
-        const uniqueYears = [...new Set(initialAttendance.map((item: any) => 
+        const uniqueYears = [...new Set(initialAttendance.map((item: any) =>
             new Date(item.attendance_date).getFullYear().toString()
         ))];
         const sorted = (uniqueYears as string[]).sort((a, b) => parseInt(b) - parseInt(a));
@@ -40,20 +87,20 @@ export default function AttendanceHistory() {
     const filteredAttendance = useMemo(() => {
         let filtered = initialAttendance;
         if (selectedYear !== 'All') {
-            filtered = filtered.filter((item: any) => 
+            filtered = filtered.filter((item: any) =>
                 new Date(item.attendance_date).getFullYear().toString() === selectedYear
             );
         }
-        return filtered.sort((a: any, b: any) => 
+        return filtered.sort((a: any, b: any) =>
             new Date(b.attendance_date).getTime() - new Date(a.attendance_date).getTime()
         );
     }, [initialAttendance, selectedYear]);
 
     const SummaryCard = () => {
         const totalSessions = initialAttendance.length;
-        const totalPaid = initialAttendance.reduce((acc: number, item: any) => 
+        const totalPaid = initialAttendance.reduce((acc: number, item: any) =>
             acc + (parseFloat(item.total_amount_paid) || 0), 0);
-        
+
         return (
             <View style={[styles.summaryCard, { backgroundColor: cardBg }]}>
                 <View style={styles.summaryItem}>
@@ -71,10 +118,8 @@ export default function AttendanceHistory() {
 
     const AttendanceItem = ({ item }: { item: any }) => {
         const dateObj = new Date(item.attendance_date);
-        const therapyDetails = typeof item.therapy_details === 'string'
-            ? JSON.parse(item.therapy_details)
-            : item.therapy_details;
-            
+        const therapyDetails = parseTherapyDetails(item.therapy_details);
+
         const isPaid = parseFloat(item.total_amount_paid) >= parseFloat(item.total_amount);
 
         return (
@@ -93,11 +138,11 @@ export default function AttendanceHistory() {
                         </View>
                     </View>
                     <View style={[styles.paymentBadge, { backgroundColor: isPaid ? '#ecfdf5' : '#fff7ed' }]}>
-                        <Ionicons 
-                            name={isPaid ? "checkmark-circle" : "alert-circle"} 
-                            size={14} 
-                            color={isPaid ? "#059669" : "#c2410c"} 
-                            style={{ marginRight: 5 }} 
+                        <Ionicons
+                            name={isPaid ? "checkmark-circle" : "alert-circle"}
+                            size={14}
+                            color={isPaid ? "#059669" : "#c2410c"}
+                            style={{ marginRight: 5 }}
                         />
                         <ThemedText style={[styles.paymentText, { color: isPaid ? '#059669' : '#c2410c' }]}>
                             {isPaid ? 'Paid' : 'Unpaid'}
