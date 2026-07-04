@@ -10,7 +10,10 @@ export const searchGoals = async (regNo: string) => {
             params: { reg_no: regNo }
         });
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        if (error.response && error.response.status === 404) {
+            return [];
+        }
         console.error("Error fetching goals:", error);
         throw error;
     }
@@ -22,7 +25,10 @@ export const searchDevelopmentalGoals = async (regNo: string) => {
             params: { reg_no: regNo }
         });
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        if (error.response && error.response.status === 404) {
+            return [];
+        }
         console.error("Error fetching developmental goals:", error);
         throw error;
     }

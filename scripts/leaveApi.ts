@@ -14,7 +14,10 @@ export const searchLeaves = async (regNo: string, month: string = 'All', year?: 
         }
         const response = await axios.get(`${API_BASE_URL}/leave/`, { params });
         return response.data;
-    } catch (error) {
+    } catch (error: any) {
+        if (error.response && error.response.status === 404) {
+            return [];
+        }
         console.error("Error fetching leaves:", error);
         throw error;
     }

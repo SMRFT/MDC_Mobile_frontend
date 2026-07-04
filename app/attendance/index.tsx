@@ -16,7 +16,7 @@ const { height } = Dimensions.get('window');
 const parseTherapyDetails = (therapyDetails: any): any[] => {
     if (!therapyDetails) return [];
     if (typeof therapyDetails !== 'string') return therapyDetails;
-    
+
     try {
         return JSON.parse(therapyDetails);
     } catch (e) {
@@ -24,7 +24,7 @@ const parseTherapyDetails = (therapyDetails: any): any[] => {
         try {
             const doubleQuoted = therapyDetails.replace(/'/g, '"');
             return JSON.parse(doubleQuoted);
-        } catch (err) {}
+        } catch (err) { }
 
         if (therapyDetails.includes('OrderedDict')) {
             try {
@@ -75,7 +75,7 @@ export default function AttendanceHistory() {
     const primaryColor = useThemeColor({}, 'primary');
 
     const years = useMemo(() => {
-        const uniqueYears = [...new Set(initialAttendance.map((item: any) => 
+        const uniqueYears = [...new Set(initialAttendance.map((item: any) =>
             new Date(item.attendance_date).getFullYear().toString()
         ))];
         const sorted = (uniqueYears as string[]).sort((a, b) => parseInt(b) - parseInt(a));
@@ -87,20 +87,20 @@ export default function AttendanceHistory() {
     const filteredAttendance = useMemo(() => {
         let filtered = initialAttendance;
         if (selectedYear !== 'All') {
-            filtered = filtered.filter((item: any) => 
+            filtered = filtered.filter((item: any) =>
                 new Date(item.attendance_date).getFullYear().toString() === selectedYear
             );
         }
-        return filtered.sort((a: any, b: any) => 
+        return filtered.sort((a: any, b: any) =>
             new Date(b.attendance_date).getTime() - new Date(a.attendance_date).getTime()
         );
     }, [initialAttendance, selectedYear]);
 
     const SummaryCard = () => {
         const totalSessions = initialAttendance.length;
-        const totalPaid = initialAttendance.reduce((acc: number, item: any) => 
+        const totalPaid = initialAttendance.reduce((acc: number, item: any) =>
             acc + (parseFloat(item.total_amount_paid) || 0), 0);
-        
+
         return (
             <View style={[styles.summaryCard, { backgroundColor: cardBg }]}>
                 <View style={styles.summaryItem}>
@@ -119,7 +119,7 @@ export default function AttendanceHistory() {
     const AttendanceItem = ({ item }: { item: any }) => {
         const dateObj = new Date(item.attendance_date);
         const therapyDetails = parseTherapyDetails(item.therapy_details);
-            
+
         const isPaid = parseFloat(item.total_amount_paid) >= parseFloat(item.total_amount);
 
         return (
@@ -138,11 +138,11 @@ export default function AttendanceHistory() {
                         </View>
                     </View>
                     <View style={[styles.paymentBadge, { backgroundColor: isPaid ? '#ecfdf5' : '#fff7ed' }]}>
-                        <Ionicons 
-                            name={isPaid ? "checkmark-circle" : "alert-circle"} 
-                            size={14} 
-                            color={isPaid ? "#059669" : "#c2410c"} 
-                            style={{ marginRight: 5 }} 
+                        <Ionicons
+                            name={isPaid ? "checkmark-circle" : "alert-circle"}
+                            size={14}
+                            color={isPaid ? "#059669" : "#c2410c"}
+                            style={{ marginRight: 5 }}
                         />
                         <ThemedText style={[styles.paymentText, { color: isPaid ? '#059669' : '#c2410c' }]}>
                             {isPaid ? 'Paid' : 'Unpaid'}

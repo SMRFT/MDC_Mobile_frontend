@@ -24,7 +24,9 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.manibalan.mdcmobilefrontend"
+      "package": "com.manibalan.mdcmobilefrontend",
+      "versionCode": 4,
+      "version": "1.0.4"
     },
     "web": {
       "output": "static",
@@ -52,7 +54,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "81efb999-9599-4097-8df1-e1ad7a779dce"
+        "projectId": "fca7a746-5282-4074-a81d-76fad56bf48a"
       }
     }
   }
