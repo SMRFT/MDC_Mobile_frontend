@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   StyleSheet, TextInput, TouchableOpacity, View,
   ActivityIndicator, Alert, Dimensions, Image,
@@ -35,6 +36,61 @@ export default function LoginScreen() {
   const [showCpOldPass, setShowCpOldPass] = useState(false);
   const [showCpNewPass, setShowCpNewPass] = useState(false);
   const [showCpConfirmPass, setShowCpConfirmPass] = useState(false);
+  
+  const [autoLoggingIn, setAutoLoggingIn] = useState(false);
+  const CREDENTIALS_FILE = FileSystem.documentDirectory + 'user_credentials.json';
+
+  useEffect(() => {
+    const checkSavedCredentials = async () => {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(CREDENTIALS_FILE);
+        if (fileInfo.exists) {
+          setAutoLoggingIn(true);
+          const content = await FileSystem.readAsStringAsync(CREDENTIALS_FILE);
+          const parsed = JSON.parse(content);
+          if (parsed && parsed.phone && parsed.password) {
+            const response = await axios.get(`${Config.API_BASE_URL}/search-phone/`, {
+              params: { phone: parsed.phone, password: parsed.password }
+            });
+            
+            if (response.data.length === 1) {
+              const regNo = response.data[0].registration_number;
+              const detailsResponse = await axios.get(`${Config.API_BASE_URL}/search/`, {
+                params: { reg_no: regNo }
+              });
+              router.replace({
+                pathname: '/details',
+                params: { data: JSON.stringify(detailsResponse.data) }
+              });
+            } else if (response.data.length > 1) {
+              if (parsed.selectedRegNo) {
+                const matched = response.data.find((p: any) => p.registration_number === parsed.selectedRegNo);
+                if (matched) {
+                  const detailsResponse = await axios.get(`${Config.API_BASE_URL}/search/`, {
+                    params: { reg_no: parsed.selectedRegNo }
+                  });
+                  router.replace({
+                    pathname: '/details',
+                    params: { data: JSON.stringify(detailsResponse.data) }
+                  });
+                  return;
+                }
+              }
+              setPhone(parsed.phone);
+              setPassword(parsed.password);
+              setProfiles(response.data);
+              setModalVisible(true);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Auto login error:", err);
+      } finally {
+        setAutoLoggingIn(false);
+      }
+    };
+    checkSavedCredentials();
+  }, []);
 
   const { resolvedTheme } = useTheme();
 
@@ -56,7 +112,17 @@ export default function LoginScreen() {
       });
 
       if (response.data.length === 1) {
-        handleProfileSelect(response.data[0].registration_number);
+        const regNo = response.data[0].registration_number;
+        try {
+          await FileSystem.writeAsStringAsync(CREDENTIALS_FILE, JSON.stringify({
+            phone: phone,
+            password: password,
+            selectedRegNo: regNo
+          }));
+        } catch (e) {
+          console.error("Error saving credentials:", e);
+        }
+        handleProfileSelect(regNo);
       } else {
         setProfiles(response.data);
         setModalVisible(true);
@@ -74,11 +140,21 @@ export default function LoginScreen() {
     setModalVisible(false);
     setLoading(true);
     try {
+      try {
+        await FileSystem.writeAsStringAsync(CREDENTIALS_FILE, JSON.stringify({
+          phone: phone,
+          password: password,
+          selectedRegNo: regNo
+        }));
+      } catch (e) {
+        console.error("Error saving credentials:", e);
+      }
+
       const response = await axios.get(`${Config.API_BASE_URL}/search/`, {
         params: { reg_no: regNo }
       });
 
-      router.push({
+      router.replace({
         pathname: '/details',
         params: { data: JSON.stringify(response.data) }
       });
@@ -121,6 +197,17 @@ export default function LoginScreen() {
       setCpLoading(false);
     }
   };
+
+  if (autoLoggingIn) {
+    return (
+      <View style={[styles.container, { backgroundColor: darkBg, justifyContent: 'center', alignItems: 'center', flex: 1 }]}>
+        <ActivityIndicator size="large" color={accentColor} />
+        <ThemedText style={{ color: '#9ca3af', marginTop: 15, fontWeight: '600' }}>
+          Checking session...
+        </ThemedText>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: darkBg }]}>

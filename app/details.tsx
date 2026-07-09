@@ -11,6 +11,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
 import Config from '@/constants/Config';
 import { downloadAssessmentReport } from '@/utils/reportDownloader';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const { width, height } = Dimensions.get('window');
 
@@ -144,9 +145,20 @@ export default function DetailsScreen() {
             <ThemedView style={styles.profileModalContainer}>
                 <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
                     <ThemedText type="title">MDC Profile</ThemedText>
-                    <TouchableOpacity onPress={() => setProfileVisible(false)} style={styles.closeBtn}>
-                        <Ionicons name="close" size={28} color={textSecondary} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <TouchableOpacity 
+                            style={{ marginRight: 15, backgroundColor: '#fee2e2', padding: 6, borderRadius: 10 }} 
+                            onPress={() => {
+                                setProfileVisible(false);
+                                handleLogout();
+                            }}
+                        >
+                            <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setProfileVisible(false)} style={styles.closeBtn}>
+                            <Ionicons name="close" size={28} color={textSecondary} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.modalScroll}>
@@ -181,6 +193,7 @@ export default function DetailsScreen() {
                     {/* Account Settings */}
                     <View style={[styles.section, { backgroundColor: cardColor, borderColor: '#fee2e2', borderWidth: 1 }]}>
                         <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#ef4444' }]}>Account Settings</ThemedText>
+                        
                         <TouchableOpacity 
                             style={[styles.infoItem, { borderBottomWidth: 0, opacity: deactivating ? 0.6 : 1 }]}
                             onPress={handleDeactivateAccount}
@@ -203,9 +216,20 @@ export default function DetailsScreen() {
     );
 
     const handleLogout = () => {
+        const clearSavedCredentials = async () => {
+            try {
+                const credentialsFile = FileSystem.documentDirectory + 'user_credentials.json';
+                await FileSystem.deleteAsync(credentialsFile, { idempotent: true });
+            } catch (e) {
+                console.error("Failed to clear credentials file:", e);
+            }
+        };
+
         if (Platform.OS === 'web') {
             if (confirm("Are you sure you want to logout?")) {
-                router.replace('/');
+                clearSavedCredentials().finally(() => {
+                    router.replace('/');
+                });
             }
             return;
         }
@@ -215,7 +239,15 @@ export default function DetailsScreen() {
             "Are you sure you want to logout?",
             [
                 { text: "Cancel", style: "cancel" },
-                { text: "Logout", style: "destructive", onPress: () => router.replace('/') }
+                { 
+                    text: "Logout", 
+                    style: "destructive", 
+                    onPress: () => {
+                        clearSavedCredentials().finally(() => {
+                            router.replace('/');
+                        });
+                    } 
+                }
             ]
         );
     };
@@ -226,7 +258,13 @@ export default function DetailsScreen() {
             axios.post(`${Config.API_BASE_URL}/deactivate-account/`, {
                 reg_no: registration.registration_number
             })
-            .then(() => {
+            .then(async () => {
+                try {
+                    const credentialsFile = FileSystem.documentDirectory + 'user_credentials.json';
+                    await FileSystem.deleteAsync(credentialsFile, { idempotent: true });
+                } catch (e) {
+                    console.error("Failed to clear credentials file:", e);
+                }
                 setProfileVisible(false);
                 Alert.alert("Account Deactivated", "Your account has been successfully deactivated.");
                 router.replace('/');
@@ -288,10 +326,6 @@ export default function DetailsScreen() {
                                 size={22}
                                 color={primaryColor}
                             />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={[styles.actionCircle, { backgroundColor: '#fee2e2' }]} onPress={handleLogout}>
-                            <Ionicons name="log-out-outline" size={22} color="#ef4444" />
                         </TouchableOpacity>
                     </View>
                 </View>

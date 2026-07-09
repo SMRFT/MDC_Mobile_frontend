@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
     View, StyleSheet, ScrollView, TouchableOpacity, Modal,
-    TextInput, ActivityIndicator, Alert, FlatList, Dimensions, Image
+    TextInput, ActivityIndicator, Alert, FlatList, Dimensions, Image,
+    PanResponder
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +16,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function GoalsScreen() {
     const router = useRouter();
@@ -46,6 +48,142 @@ export default function GoalsScreen() {
     const [newMedia, setNewMedia] = useState<any>(null);
     const [videoPlayerVisible, setVideoPlayerVisible] = useState(false);
     const [playingVideoUri, setPlayingVideoUri] = useState('');
+    const [photoPreviewVisible, setPhotoPreviewVisible] = useState(false);
+    const [previewPhotoUri, setPreviewPhotoUri] = useState('');
+    const [videoLoading, setVideoLoading] = useState(false);
+    const [isBuffering, setIsBuffering] = useState(false);
+    const [bufferingPercentage, setBufferingPercentage] = useState(0);
+    const [playbackError, setPlaybackError] = useState<string | null>(null);
+    const [shouldPlayVideo, setShouldPlayVideo] = useState(false);
+    const [localVideoUri, setLocalVideoUri] = useState<string | null>(null);
+    const [downloading, setDownloading] = useState(false);
+    const downloadRef = useRef<FileSystem.DownloadResumable | null>(null);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                return gestureState.dy > 15 && Math.abs(gestureState.dx) < 40;
+            },
+            onPanResponderRelease: (evt, gestureState) => {
+                if (gestureState.dy > 100) {
+                    setPhotoPreviewVisible(false);
+                    handleCloseVideo();
+                }
+            },
+        })
+    ).current;
+
+    const prepareVideo = async (remoteUrl: string) => {
+        try {
+            setPlaybackError(null);
+            setLocalVideoUri(null);
+            setBufferingPercentage(0);
+            
+            if (!remoteUrl.startsWith('http')) {
+                setLocalVideoUri(remoteUrl);
+                return;
+            }
+
+            setDownloading(true);
+            setVideoLoading(true);
+
+            const filename = remoteUrl.split('/').filter(Boolean).pop() || 'temp_video.mp4';
+            const cleanFilename = filename.includes('.') ? filename : `${filename}.mp4`;
+            const localPath = `${FileSystem.cacheDirectory}${cleanFilename}`;
+
+            const fileInfo = await FileSystem.getInfoAsync(localPath);
+            if (fileInfo.exists) {
+                setDownloading(false);
+                setVideoLoading(false);
+                setLocalVideoUri(localPath);
+                return;
+            }
+
+            const downloadInstance = FileSystem.createDownloadResumable(
+                remoteUrl,
+                localPath,
+                {},
+                (downloadProgress) => {
+                    const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+                    setBufferingPercentage(Math.round(progress * 100));
+                }
+            );
+            downloadRef.current = downloadInstance;
+
+            const result = await downloadInstance.downloadAsync();
+            if (result && result.uri) {
+                setLocalVideoUri(result.uri);
+            } else {
+                throw new Error("Failed to download video file");
+            }
+            setDownloading(false);
+            setVideoLoading(false);
+        } catch (err: any) {
+            console.error("Error downloading video:", err);
+            setPlaybackError(err.message || String(err));
+            setDownloading(false);
+            setVideoLoading(false);
+        }
+    };
+
+    const handleCloseVideo = async () => {
+        setVideoPlayerVisible(false);
+        setPlaybackError(null);
+        setShouldPlayVideo(false);
+        setLocalVideoUri(null);
+        setDownloading(false);
+        if (downloadRef.current) {
+            try {
+                await downloadRef.current.cancelAsync();
+            } catch (e) {
+                console.error("Cancel download error:", e);
+            }
+            downloadRef.current = null;
+        }
+    };
+
+    const getPhotoUriString = (uriObj: any): string => {
+        if (!uriObj) return '';
+        let uriStr = '';
+        if (typeof uriObj === 'string') uriStr = uriObj;
+        else if (typeof uriObj === 'object') {
+            uriStr = uriObj.url || uriObj.file_url || uriObj.uri || '';
+        }
+        if (!uriStr) return '';
+        if (uriStr.startsWith('http://')) {
+            uriStr = 'https://' + uriStr.substring(7);
+        }
+        return uriStr.startsWith('http') ? encodeURI(uriStr) : uriStr;
+    };
+
+    const getVideoUriString = (uriObj: any): string => {
+        if (!uriObj) return '';
+        let uriStr = '';
+        if (typeof uriObj === 'string') uriStr = uriObj;
+        else if (typeof uriObj === 'object') {
+            uriStr = uriObj.url || uriObj.file_url || uriObj.uri || '';
+        }
+        if (!uriStr) return '';
+        if (uriStr.startsWith('http://')) {
+            uriStr = 'https://' + uriStr.substring(7);
+        }
+        return uriStr.startsWith('http') ? encodeURI(uriStr) : uriStr;
+    };
+
+    const handlePlaybackStatusUpdate = (status: any) => {
+        if (status.isLoaded) {
+            setIsBuffering(status.isBuffering);
+            if (status.durationMillis) {
+                const pct = Math.round((status.playableDurationMillis / status.durationMillis) * 100);
+                setBufferingPercentage(Math.min(100, Math.max(0, pct)));
+            }
+        } else {
+            if (status.isBuffering) {
+                setIsBuffering(true);
+            }
+        }
+    };
 
     useEffect(() => {
         if (regNoParam) {
@@ -163,7 +301,7 @@ export default function GoalsScreen() {
             {item.comments && (
                 <View style={[styles.commentBox, { borderTopColor: borderColor }]}>
                     <ThemedText style={[styles.commentText, { color: textSecondary }]} numberOfLines={2}>
-                        "{item.comments}"
+                        {"\""}{item.comments}{"\""}
                     </ThemedText>
                 </View>
             )}
@@ -231,7 +369,12 @@ export default function GoalsScreen() {
                 )}
             </View>
 
-            <Modal visible={editMode} animationType="slide">
+            <Modal 
+                visible={editMode} 
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setEditMode(false)}
+            >
                 <ThemedView style={styles.modalContainer}>
                     <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
                         <ThemedText style={styles.modalTitle}>Goal Details</ThemedText>
@@ -274,23 +417,51 @@ export default function GoalsScreen() {
                             <ThemedText style={styles.label}>Media Evidence</ThemedText>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaScroll}>
                                 {editedPhotos.map((p, i) => (
-                                    <Image key={`p-${i}`} source={{ uri: p.url || p }} style={styles.mediaThumb} />
+                                    <TouchableOpacity 
+                                        key={`p-${i}`} 
+                                        style={styles.mediaThumb} 
+                                        onPress={() => { setPreviewPhotoUri(getPhotoUriString(p)); setPhotoPreviewVisible(true); }}
+                                    >
+                                        <Image source={{ uri: getPhotoUriString(p) }} style={StyleSheet.absoluteFillObject} />
+                                    </TouchableOpacity>
                                 ))}
                                 {editedVideos.map((v, i) => (
                                     <TouchableOpacity 
                                         key={`v-${i}`} 
                                         style={styles.mediaThumb} 
-                                        onPress={() => { setPlayingVideoUri(v.url || v); setVideoPlayerVisible(true); }}
+                                        onPress={() => {
+                                            const resolvedUri = getVideoUriString(v);
+                                            setPlayingVideoUri(resolvedUri);
+                                            setVideoPlayerVisible(true);
+                                            prepareVideo(resolvedUri);
+                                        }}
                                     >
                                         <View style={styles.videoPlayOverlay}><Ionicons name="play" size={30} color="white" /></View>
                                     </TouchableOpacity>
                                 ))}
                                 
                                 {newMedia && (
-                                    <View style={[styles.mediaThumb, { borderColor: '#15803d', borderWidth: 2 }]}>
+                                    <TouchableOpacity 
+                                        style={[styles.mediaThumb, { borderColor: '#15803d', borderWidth: 2 }]}
+                                        onPress={() => {
+                                            const isVideo = newMedia.type === 'video' || (newMedia.mimeType && newMedia.mimeType.startsWith('video/'));
+                                            if (isVideo) {
+                                                setPlayingVideoUri(newMedia.uri);
+                                                setVideoPlayerVisible(true);
+                                                prepareVideo(newMedia.uri);
+                                            } else {
+                                                setPreviewPhotoUri(newMedia.uri);
+                                                setPhotoPreviewVisible(true);
+                                            }
+                                        }}
+                                    >
                                          <ThemedText style={styles.newTag}>NEW</ThemedText>
-                                         <Ionicons name={newMedia.type === 'video' ? 'videocam' : 'image'} size={30} color="#15803d" />
-                                    </View>
+                                         {newMedia.type === 'video' || (newMedia.mimeType && newMedia.mimeType.startsWith('video/')) ? (
+                                             <View style={styles.videoPlayOverlay}><Ionicons name="play" size={30} color="white" /></View>
+                                         ) : (
+                                             <Image source={{ uri: newMedia.uri }} style={StyleSheet.absoluteFillObject} />
+                                         )}
+                                    </TouchableOpacity>
                                 )}
 
                                 <TouchableOpacity style={styles.addMediaBtn} onPress={() => pickMedia('Images')}>
@@ -344,21 +515,93 @@ export default function GoalsScreen() {
                         </TouchableOpacity>
                     </View>
                 </ThemedView>
-            </Modal>
+                {photoPreviewVisible && (
+                    <View 
+                        {...panResponder.panHandlers}
+                        style={[StyleSheet.absoluteFillObject, { backgroundColor: 'black', zIndex: 1000, justifyContent: 'center', alignItems: 'center' }]}
+                    >
+                        <TouchableOpacity style={styles.closeVideo} onPress={() => setPhotoPreviewVisible(false)}>
+                            <Ionicons name="close-circle" size={40} color="white" />
+                        </TouchableOpacity>
+                        <Image
+                            source={{ uri: getPhotoUriString(previewPhotoUri) }}
+                            style={styles.photoPlayer}
+                            resizeMode="contain"
+                        />
+                    </View>
+                )}
 
-            <Modal visible={videoPlayerVisible} animationType="fade" transparent>
-                <View style={styles.videoOverlay}>
-                    <TouchableOpacity style={styles.closeVideo} onPress={() => setVideoPlayerVisible(false)}>
-                        <Ionicons name="close-circle" size={40} color="white" />
-                    </TouchableOpacity>
-                    <Video
-                        source={{ uri: playingVideoUri }}
-                        resizeMode={ResizeMode.CONTAIN}
-                        shouldPlay
-                        useNativeControls
-                        style={styles.videoPlayer}
-                    />
-                </View>
+                {videoPlayerVisible && (
+                    <View 
+                        {...panResponder.panHandlers}
+                        style={[StyleSheet.absoluteFillObject, { backgroundColor: 'black', zIndex: 1000, justifyContent: 'center', alignItems: 'center' }]}
+                    >
+                        <TouchableOpacity 
+                                                            style={styles.closeVideo} 
+                                                            onPress={handleCloseVideo}
+                                                        >
+                                                            <Ionicons name="close-circle" size={40} color="white" />
+                                                        </TouchableOpacity>
+                                                        {localVideoUri && !playbackError && (
+                                                            <Video
+                                                                source={{ uri: localVideoUri }}
+                                                                resizeMode={ResizeMode.CONTAIN}
+                                                                shouldPlay={shouldPlayVideo}
+                                                                useNativeControls
+                                                                style={styles.videoPlayer}
+                                                                onLoadStart={() => {
+                                                                    setVideoLoading(true);
+                                                                    setIsBuffering(true);
+                                                                    setBufferingPercentage(0);
+                                                                }}
+                                                                onLoad={() => {
+                                                                    setVideoLoading(false);
+                                                                    setIsBuffering(false);
+                                                                    setShouldPlayVideo(true);
+                                                                }}
+                                                                onError={(err) => {
+                                                                    setVideoLoading(false);
+                                                                    setIsBuffering(false);
+                                                                    setPlaybackError(err);
+                                                                    setShouldPlayVideo(false);
+                                                                }}
+                                                                onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+                                                            />
+                                                        )}
+                                                        {(downloading || videoLoading || isBuffering) && !playbackError && (
+                                                            <View style={styles.bufferingContainer}>
+                                                                <ActivityIndicator 
+                                                                    size="large" 
+                                                                    color="#10b981" 
+                                                                />
+                                                                 <ThemedText style={styles.bufferingText}>
+                                                                     {downloading 
+                                                                         ? `Downloading... ${bufferingPercentage}%` 
+                                                                         : bufferingPercentage > 0 
+                                                                             ? `Buffering... ${bufferingPercentage}%` 
+                                                                             : 'Buffering...'}
+                                                                 </ThemedText>
+                                                                 <ThemedText style={{ color: 'gray', fontSize: 10, marginTop: 8, textAlign: 'center', paddingHorizontal: 20 }}>
+                                                                     {playingVideoUri}
+                                                                 </ThemedText>
+                                                            </View>
+                                                        )}
+                        {playbackError && (
+                            <View style={styles.bufferingContainer}>
+                                <Ionicons name="alert-circle" size={50} color="#ef4444" />
+                                <ThemedText style={styles.bufferingText}>
+                                    Failed to load video
+                                </ThemedText>
+                                <ThemedText style={{ color: '#fca5a5', fontSize: 12, marginTop: 5, textAlign: 'center', paddingHorizontal: 20 }}>
+                                    {playbackError}
+                                </ThemedText>
+                                <ThemedText style={{ color: 'gray', fontSize: 9, marginTop: 15, textAlign: 'center', paddingHorizontal: 20 }}>
+                                    URL: {getVideoUriString(playingVideoUri)}
+                                </ThemedText>
+                            </View>
+                        )}
+                    </View>
+                )}
             </Modal>
         </ThemedView>
     );
@@ -420,7 +663,10 @@ const styles = StyleSheet.create({
     saveText: { color: 'white', fontSize: 16, fontWeight: '900' },
     deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 15, padding: 15, borderRadius: 18, borderWidth: 1, borderColor: '#fee2e2' },
     deleteText: { marginLeft: 10, color: '#ef4444', fontWeight: '800' },
-    videoOverlay: { flex: 1, backgroundColor: 'black' },
-    videoPlayer: { flex: 1 },
-    closeVideo: { position: 'absolute', top: 60, right: 25, zIndex: 20 }
+    videoOverlay: { flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' },
+    videoPlayer: { width: width, height: height * 0.7 },
+    photoPlayer: { width: width, height: height * 0.7 },
+    closeVideo: { position: 'absolute', top: 60, right: 25, zIndex: 20 },
+    bufferingContainer: { position: 'absolute', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+    bufferingText: { color: 'white', marginTop: 15, fontSize: 14, fontWeight: '700' }
 });
