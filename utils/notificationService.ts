@@ -34,10 +34,13 @@ function getNotificationsModule() {
       _Notifications.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
           shouldPlaySound: true,
           shouldSetBadge: true,
         }),
       });
+
 
       if (Platform.OS === 'android') {
         _Notifications.setNotificationChannelAsync('default', {
