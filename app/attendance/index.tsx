@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
+import { SessionMatrixGrid } from '@/components/SessionMatrixGrid';
 
 const { height } = Dimensions.get('window');
 
@@ -83,6 +84,7 @@ export default function AttendanceHistory() {
     }, [initialAttendance]);
 
     const [selectedYear, setSelectedYear] = useState('All');
+    const [viewMode, setViewMode] = useState<'matrix' | 'list'>('matrix');
 
     const filteredAttendance = useMemo(() => {
         let filtered = initialAttendance;
@@ -192,38 +194,66 @@ export default function AttendanceHistory() {
             </LinearGradient>
 
             <View style={styles.main}>
-                <View style={styles.filterSection}>
-                    <View style={styles.filterHeader}>
-                        <Ionicons name="filter" size={18} color={textSecondary} />
-                        <ThemedText style={[styles.filterTitle, { color: textSecondary }]}>Year Review</ThemedText>
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearScroll}>
-                        {years.map((y: string) => (
-                            <TouchableOpacity
-                                key={y}
-                                onPress={() => setSelectedYear(y)}
-                                style={[styles.yBtn, selectedYear === y && styles.yBtnActive, { backgroundColor: cardBg, borderColor: borderColor }]}
-                            >
-                                <ThemedText style={[styles.yTxt, selectedYear === y && styles.yTxtActive]}>{y}</ThemedText>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                <View style={[styles.viewToggleContainer, { backgroundColor: cardBg, borderColor }]}>
+                    <TouchableOpacity
+                        onPress={() => setViewMode('matrix')}
+                        style={[styles.toggleBtn, viewMode === 'matrix' && styles.toggleBtnActive]}
+                    >
+                        <Ionicons name="grid-outline" size={16} color={viewMode === 'matrix' ? 'white' : textSecondary} />
+                        <ThemedText style={[styles.toggleText, viewMode === 'matrix' && styles.toggleTextActive]}>
+                            Matrix Grid
+                        </ThemedText>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => setViewMode('list')}
+                        style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+                    >
+                        <Ionicons name="list-outline" size={16} color={viewMode === 'list' ? 'white' : textSecondary} />
+                        <ThemedText style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
+                            Card List
+                        </ThemedText>
+                    </TouchableOpacity>
                 </View>
 
-                <FlatList
-                    data={filteredAttendance}
-                    renderItem={AttendanceItem}
-                    keyExtractor={(item, index) => index.toString()}
-                    contentContainerStyle={styles.list}
-                    showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={
-                        <View style={styles.empty}>
-                            <Ionicons name="document-text-outline" size={80} color={borderColor} />
-                            <ThemedText style={[styles.emptyTitle, { color: textSecondary }]}>Empty History</ThemedText>
-                            <ThemedText style={[styles.emptySub, { color: textSecondary }]}>No attendance records found for this selection.</ThemedText>
+                {viewMode === 'matrix' ? (
+                    <SessionMatrixGrid regNo={regNo} />
+                ) : (
+                    <>
+                        <View style={styles.filterSection}>
+                            <View style={styles.filterHeader}>
+                                <Ionicons name="filter" size={18} color={textSecondary} />
+                                <ThemedText style={[styles.filterTitle, { color: textSecondary }]}>Year Review</ThemedText>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearScroll}>
+                                {years.map((y: string) => (
+                                    <TouchableOpacity
+                                        key={y}
+                                        onPress={() => setSelectedYear(y)}
+                                        style={[styles.yBtn, selectedYear === y && styles.yBtnActive, { backgroundColor: cardBg, borderColor: borderColor }]}
+                                    >
+                                        <ThemedText style={[styles.yTxt, selectedYear === y && styles.yTxtActive]}>{y}</ThemedText>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         </View>
-                    }
-                />
+
+                        <FlatList
+                            data={filteredAttendance}
+                            renderItem={AttendanceItem}
+                            keyExtractor={(item, index) => index.toString()}
+                            contentContainerStyle={styles.list}
+                            showsVerticalScrollIndicator={false}
+                            ListEmptyComponent={
+                                <View style={styles.empty}>
+                                    <Ionicons name="document-text-outline" size={80} color={borderColor} />
+                                    <ThemedText style={[styles.emptyTitle, { color: textSecondary }]}>Empty History</ThemedText>
+                                    <ThemedText style={[styles.emptySub, { color: textSecondary }]}>No attendance records found for this selection.</ThemedText>
+                                </View>
+                            }
+                        />
+                    </>
+                )}
             </View>
         </ThemedView>
     );
@@ -242,6 +272,11 @@ const styles = StyleSheet.create({
     summaryLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
     summaryDivider: { width: 1, height: '50%', alignSelf: 'center' },
     main: { flex: 1, marginTop: 65 },
+    viewToggleContainer: { flexDirection: 'row', marginHorizontal: 24, marginBottom: 12, padding: 4, borderRadius: 16, borderWidth: 1 },
+    toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12 },
+    toggleBtnActive: { backgroundColor: '#4f46e5' },
+    toggleText: { fontSize: 13, fontWeight: '800', marginLeft: 6, color: '#64748b' },
+    toggleTextActive: { color: 'white' },
     filterSection: { paddingHorizontal: 24, marginBottom: 20 },
     filterHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
     filterTitle: { fontSize: 12, fontWeight: '900', marginLeft: 8, textTransform: 'uppercase' },

@@ -23,6 +23,19 @@ const SectionHead = ({ children }: { children: string }) => (
   <Text style={s.sectionHead}>{children}</Text>
 );
 
+const parseJson = (val: any) => {
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val);
+    } catch (e) {
+      return {};
+    }
+  }
+  return {};
+};
+
 const FieldRow = ({ label, value }: { label: string; value: string }) => {
   if (!value || value === '–') return null;
   return (
@@ -138,17 +151,18 @@ const PhysioSection = ({ doc }: { doc: any }) => {
 const AnalysisSection = ({ doc }: { doc: any }) => {
   if (!doc) return null;
 
-  const lang = doc.preferred_language || {};
+  const lang = parseJson(doc.preferred_language);
   const preferredLang = Object.entries(lang)
-    .filter(([_, v]) => v)
-    .map(([k]) => k.toUpperCase())
+    .filter(([_, v]) => Boolean(v))
+    .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1))
     .join(', ');
 
-  const mapping = doc.mapping_therapy || {};
+  const mapping = parseJson(doc.mapping_therapy);
   const mappingText = Object.entries(mapping)
     .map(([k, v]: [string, any]) => {
-      const therapies = Object.entries(v)
-        .filter(([_, val]) => val)
+      const vObj = parseJson(v);
+      const therapies = Object.entries(vObj)
+        .filter(([_, val]) => Boolean(val))
         .map(([th]) => th)
         .join(', ');
       return therapies ? `${k}: ${therapies}` : '';
@@ -156,15 +170,15 @@ const AnalysisSection = ({ doc }: { doc: any }) => {
     .filter(Boolean)
     .join(' | ');
 
-  const sessions = doc.session_numbers || {};
+  const sessions = parseJson(doc.session_numbers);
   const sessionsText = Object.entries(sessions)
-    .filter(([_, v]) => v)
+    .filter(([_, v]) => Boolean(v) && v !== '')
     .map(([k, v]) => `${k}: ${v}`)
     .join(', ');
 
-  const methods = doc.therapy_methods || {};
+  const methods = parseJson(doc.therapy_methods);
   const methodsText = Object.entries(methods)
-    .filter(([_, v]) => v)
+    .filter(([_, v]) => Boolean(v))
     .map(([k]) => k.replace(/_/g, ' ').toUpperCase())
     .join(', ');
 

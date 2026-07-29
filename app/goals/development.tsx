@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, StyleSheet, ScrollView, TouchableOpacity, Modal,
-    TextInput, ActivityIndicator, Alert, FlatList, Dimensions, Image
+    ActivityIndicator, Alert, FlatList, Dimensions, Image
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,49 @@ const STATUS_MAP: any = {
 	'Pending': { label: 'Pending', color: '#64748b', bg: '#f1f5f9' }
 };
 
+const THERAPY_MAP: Record<string, string> = {
+    'THP001': 'Occupational Therapy',
+    'THP002': 'Physiotherapy',
+    'THP003': 'Speech Therapy',
+    'THP004': 'Applied Behavior Analysis (ABA)',
+    'THP005': 'Special Education',
+    'THP006': 'Social Training Class',
+    'THP007': 'Only Group Therapy Session',
+    'THP008': 'Curriculum Class',
+    'THP009': 'Cognitive Therapy',
+    'THP010': 'Online Therapy (Speech)'
+};
+
+const DOMAIN_MAP: Record<string, string> = {
+    'AT001': 'Social Skills',
+    'AT002': 'Cognition',
+    'AT003': 'Play',
+    'AT004': 'Behaviour',
+    'AT005': 'Social Skills - Adult or Peers'
+};
+
+const LEVEL_MAP: Record<string, string> = {
+    'LVL01': 'Level 1',
+    'LVL02': 'Level 2',
+    'LVL03': 'Level 3',
+    'LVL04': 'Level 4'
+};
+
+const getTherapyName = (g: any) => {
+    if (g?.therapy_name && g.therapy_name !== g.therapy) return g.therapy_name;
+    return THERAPY_MAP[g?.therapy] || g?.therapy_name || g?.therapy || '';
+};
+
+const getDomainName = (g: any) => {
+    if (g?.domain_name && g.domain_name !== g.domain) return g.domain_name;
+    return DOMAIN_MAP[g?.domain] || g?.domain_name || g?.domain || '';
+};
+
+const getLevelName = (g: any) => {
+    if (g?.level_name && g.level_name !== g.level) return g.level_name;
+    return LEVEL_MAP[g?.level] || g?.level_name || g?.level || '';
+};
+
 export default function DevelopmentalGoalsScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
@@ -47,16 +90,13 @@ export default function DevelopmentalGoalsScreen() {
     const primaryColor = useThemeColor({}, 'primary');
 
     useEffect(() => {
-        if (regNoParam) {
+        if (regNo) {
             handleSearch();
         }
-    }, [regNoParam]);
+    }, [regNo]);
 
     const handleSearch = async () => {
-        if (!regNo.trim()) {
-            Alert.alert("Required", "Please enter a registration number");
-            return;
-        }
+        if (!regNo.trim()) return;
         setLoading(true);
         try {
             const data = await searchDevelopmentalGoals(regNo);
@@ -99,14 +139,29 @@ export default function DevelopmentalGoalsScreen() {
             <View style={styles.cardBody}>
                 <ThemedText style={styles.previewLabel}>Goals ({item.development_goals?.length || 0})</ThemedText>
                 {item.development_goals?.slice(0, 3).map((g: any, i: number) => (
-                    <View key={i} style={styles.goalRowPreview}>
-                        <View style={styles.goalInfo}>
-                            <View style={[styles.dot, { backgroundColor: STATUS_MAP[g.status]?.color || '#cbd5e1' }]} />
-                            <ThemedText style={styles.previewText} numberOfLines={1}>
-                                {g.goal}
-                            </ThemedText>
+                    <View key={i} style={styles.goalRowPreviewContainer}>
+                        <View style={styles.goalRowPreview}>
+                            <View style={styles.goalInfo}>
+                                <View style={[styles.dot, { backgroundColor: STATUS_MAP[g.status]?.color || '#cbd5e1' }]} />
+                                <ThemedText style={styles.previewText} numberOfLines={1}>
+                                    {g.goal}
+                                </ThemedText>
+                            </View>
+                            <StatusBadge status={g.status} />
                         </View>
-                        <StatusBadge status={g.status} />
+                        {(getTherapyName(g) || getDomainName(g) || getLevelName(g)) ? (
+                            <View style={styles.previewMetaRow}>
+                                {[
+                                    getTherapyName(g),
+                                    getDomainName(g),
+                                    getLevelName(g)
+                                ].filter(Boolean).map((meta: string, metaIdx: number) => (
+                                    <View key={metaIdx} style={[styles.miniBadge, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f1f5f9' }]}>
+                                        <ThemedText style={styles.miniBadgeText}>{meta}</ThemedText>
+                                    </View>
+                                ))}
+                            </View>
+                        ) : null}
                     </View>
                 ))}
             </View>
@@ -123,25 +178,13 @@ export default function DevelopmentalGoalsScreen() {
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={26} color="white" />
                     </TouchableOpacity>
-                    <ThemedText style={styles.title}>Developmental</ThemedText>
+                    <ThemedText style={styles.title}>Developmental Goals</ThemedText>
                     <View style={{ width: 44 }} />
                 </View>
+                {regNo ? <ThemedText style={styles.regDisplay}>{regNo}</ThemedText> : null}
             </LinearGradient>
 
             <View style={styles.main}>
-                <View style={[styles.searchBox, { backgroundColor: cardBg }]}>
-                    <TextInput
-                        style={[styles.input, { color: textColor, backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor }]}
-                        placeholder="Search Registration No..."
-                        placeholderTextColor="#94a3b8"
-                        value={regNo}
-                        onChangeText={setRegNo}
-                    />
-                    <TouchableOpacity style={[styles.searchBtn, { backgroundColor: '#4338ca' }]} onPress={handleSearch}>
-                        <Ionicons name="search" size={20} color="white" />
-                    </TouchableOpacity>
-                </View>
-
                 {loading ? (
                     <ActivityIndicator style={{ marginTop: 50 }} color="#4338ca" size="large" />
                 ) : (
@@ -154,7 +197,7 @@ export default function DevelopmentalGoalsScreen() {
                             <View style={styles.empty}>
                                 <Ionicons name="rocket-outline" size={80} color={borderColor} />
                                 <ThemedText style={[styles.emptyTitle, { color: textSecondary }]}>No Records Found.</ThemedText>
-                                <ThemedText style={[styles.emptySub, { color: textSecondary }]}>Search for a patient to see their developmental progress.</ThemedText>
+                                <ThemedText style={[styles.emptySub, { color: textSecondary }]}>No developmental progress records available.</ThemedText>
                             </View>
                         }
                     />
@@ -187,6 +230,35 @@ export default function DevelopmentalGoalsScreen() {
                                     <StatusBadge status={g.status} />
                                 </View>
                                 
+                                <View style={styles.tagsContainer}>
+                                    {getTherapyName(g) ? (
+                                        <View style={[styles.tagBadge, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#e0e7ff' }]}>
+                                            <Ionicons name="medical-outline" size={12} color="#4338ca" />
+                                            <ThemedText style={[styles.tagText, { color: '#4338ca' }]}>
+                                                {getTherapyName(g)}
+                                            </ThemedText>
+                                        </View>
+                                    ) : null}
+
+                                    {getDomainName(g) ? (
+                                        <View style={[styles.tagBadge, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#fef3c7' }]}>
+                                            <Ionicons name="grid-outline" size={12} color="#b45309" />
+                                            <ThemedText style={[styles.tagText, { color: '#b45309' }]}>
+                                                {getDomainName(g)}
+                                            </ThemedText>
+                                        </View>
+                                    ) : null}
+
+                                    {getLevelName(g) ? (
+                                        <View style={[styles.tagBadge, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#dcfce7' }]}>
+                                            <Ionicons name="stats-chart-outline" size={12} color="#15803d" />
+                                            <ThemedText style={[styles.tagText, { color: '#15803d' }]}>
+                                                {getLevelName(g)}
+                                            </ThemedText>
+                                        </View>
+                                    ) : null}
+                                </View>
+
                                 <ThemedText style={styles.detailGoalText}>{g.goal}</ThemedText>
                                 
                                 {g.details && (
@@ -208,15 +280,12 @@ export default function DevelopmentalGoalsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 45, borderBottomLeftRadius: 35, borderBottomRightRadius: 35 },
+    header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
     nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
     title: { fontSize: 20, fontWeight: '900', color: 'white' },
     regDisplay: { color: 'white', textAlign: 'center', marginTop: 15, fontWeight: '700', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
-    main: { flex: 1, marginTop: -25 },
-    searchBox: { marginHorizontal: 20, borderRadius: 20, padding: 10, flexDirection: 'row', elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
-    input: { flex: 1, height: 50, borderRadius: 15, paddingHorizontal: 15, borderWidth: 1, fontWeight: '700' },
-    searchBtn: { width: 50, height: 50, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+    main: { flex: 1, marginTop: 10 },
     list: { padding: 20, paddingBottom: 50 },
     card: { borderRadius: 24, padding: 20, marginBottom: 18, borderLeftWidth: 8, borderLeftColor: '#4338ca', elevation: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, borderWidth: 1 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
@@ -224,7 +293,11 @@ const styles = StyleSheet.create({
     dateText: { fontSize: 12, fontWeight: '800', marginLeft: 6, color: '#2563eb' },
     cardBody: { marginBottom: 5 },
     previewLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 12 },
-    goalRowPreview: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    goalRowPreviewContainer: { marginBottom: 10 },
+    goalRowPreview: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+    previewMetaRow: { flexDirection: 'row', flexWrap: 'wrap', marginLeft: 18, marginTop: 2 },
+    miniBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginRight: 6, marginBottom: 4 },
+    miniBadgeText: { fontSize: 10, fontWeight: '700', color: '#64748b' },
     goalInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
     dot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
     previewText: { fontSize: 14, fontWeight: '700' },
@@ -242,7 +315,10 @@ const styles = StyleSheet.create({
     modalDate: { fontSize: 16, fontWeight: '800', marginLeft: 10 },
     sectionLabel: { fontSize: 12, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 15, letterSpacing: 1 },
     detailGoalCard: { borderRadius: 20, padding: 20, marginBottom: 15, borderWidth: 1 },
-    goalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    goalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, marginTop: 4 },
+    tagBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, marginRight: 8, marginBottom: 6 },
+    tagText: { fontSize: 11, fontWeight: '800', marginLeft: 5 },
     goalNo: { width: 28, height: 28, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
     detailGoalText: { fontSize: 16, fontWeight: '700', lineHeight: 22, marginBottom: 12 },
     detailsBox: { borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 12 },

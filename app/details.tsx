@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, ScrollView, View, TouchableOpacity, Dimensions, Modal, Image, Alert, Platform, Linking, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, ScrollView, View, TouchableOpacity, Dimensions, Modal, Image, Alert, Platform, Linking, ActivityIndicator, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,9 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
 import Config from '@/constants/Config';
 import { downloadAssessmentReport } from '@/utils/reportDownloader';
+import { getUserNotifications, markNotificationAsRead, registerDeviceForPushNotifications, NotificationItem } from '@/utils/notificationService';
 import * as FileSystem from 'expo-file-system/legacy';
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,6 +26,58 @@ export default function DetailsScreen() {
     const [themeMenuVisible, setThemeMenuVisible] = useState(false);
     const [deactivating, setDeactivating] = useState(false);
     const [downloadingAssessment, setDownloadingAssessment] = useState(false);
+
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+    const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
+    const [loadingNotifications, setLoadingNotifications] = useState(false);
+
+    const loadNotifications = async (regNo: string) => {
+        if (!regNo) return;
+        setLoadingNotifications(true);
+        const list = await getUserNotifications(regNo);
+        setNotifications(list);
+        setLoadingNotifications(false);
+    };
+
+    useEffect(() => {
+        const regNo = patientData?.registration?.registration_number;
+        if (regNo) {
+            // Automatically register device push token on launch
+            registerDeviceForPushNotifications(regNo);
+
+            // Initial load of notifications
+            loadNotifications(regNo);
+
+            // Automatic live background polling every 15 seconds without manual refresh
+            const interval = setInterval(() => {
+                getUserNotifications(regNo).then(list => setNotifications(list));
+            }, 15000);
+
+            return () => clearInterval(interval);
+        }
+    }, [patientData?.registration?.registration_number]);
+
+
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+
+    const handleNotificationClick = async (item: NotificationItem) => {
+        const notiId = item.notification_id || item.id;
+        setSelectedNotification(prev => (prev?.notification_id === notiId || prev?.id === notiId ? null : item));
+        if (!item.is_read && patientData?.registration?.registration_number) {
+            const regNo = patientData.registration.registration_number;
+            const res = await markNotificationAsRead(notiId, regNo);
+            if (res.success) {
+                const readTs = res.read_at || res.read_datetime || new Date().toISOString();
+                setNotifications(prev => prev.map(n => 
+                    (n.notification_id === notiId || n.id === notiId)
+                        ? { ...n, is_read: true, read_datetime: readTs, read_at: readTs }
+                        : n
+                ));
+            }
+        }
+    };
+
 
     const handleDownloadAssessment = (regNo: string) => {
         handleDownloadAssessmentReport(regNo);
@@ -316,6 +370,23 @@ export default function DetailsScreen() {
                         </ThemedText>
                     </View>
                     <View style={styles.headerActions}>
+                        <TouchableOpacity 
+                            style={styles.actionCircle} 
+                            onPress={() => {
+                                loadNotifications(registration.registration_number);
+                                setNotificationModalVisible(true);
+                            }}
+                        >
+                            <Ionicons name="notifications-outline" size={24} color={primaryColor} />
+                            {unreadCount > 0 && (
+                                <View style={styles.badgeContainer}>
+                                    <Text style={styles.badgeText}>
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
                         <TouchableOpacity style={styles.actionCircle} onPress={() => setProfileVisible(true)}>
                             <Ionicons name="person-circle-outline" size={26} color={primaryColor} />
                         </TouchableOpacity>
@@ -423,8 +494,97 @@ export default function DetailsScreen() {
 
             <ThemeDropdown />
             <ProfileModal />
+            <NotificationModal />
         </ThemedView>
     );
+
+    function NotificationModal() {
+        return (
+            <Modal
+                animationType="slide"
+                transparent={false}
+                visible={notificationModalVisible}
+                onRequestClose={() => {
+                    setNotificationModalVisible(false);
+                    setSelectedNotification(null);
+                }}
+            >
+                <ThemedView style={[styles.profileModalContainer, { backgroundColor }]}>
+                    <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="notifications" size={24} color={primaryColor} style={{ marginRight: 10 }} />
+                            <ThemedText type="title">Notifications</ThemedText>
+                        </View>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setNotificationModalVisible(false);
+                                setSelectedNotification(null);
+                            }} 
+                            style={styles.closeBtn}
+                        >
+                            <Ionicons name="close" size={26} color={primaryColor} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView contentContainerStyle={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                        {loadingNotifications ? (
+                            <ActivityIndicator size="large" color={primaryColor} style={{ marginTop: 40 }} />
+                        ) : notifications.length === 0 ? (
+                            <View style={{ alignItems: 'center', marginTop: 60 }}>
+                                <Ionicons name="notifications-off-outline" size={48} color={textSecondary} style={{ opacity: 0.5 }} />
+                                <ThemedText style={{ marginTop: 16, color: textSecondary, fontSize: 16, fontWeight: '600' }}>
+                                    No active notifications
+                                </ThemedText>
+                            </View>
+                        ) : (
+                            notifications.map((item) => {
+                                const isSelected = selectedNotification?.notification_id === item.notification_id;
+                                return (
+                                    <TouchableOpacity
+                                        key={item.notification_id || item.id}
+                                        style={[
+                                            styles.notificationCard,
+                                            { backgroundColor: cardColor, borderColor: item.is_read ? borderColor : primaryColor },
+                                            !item.is_read && { borderWidth: 1.5 }
+                                        ]}
+                                        onPress={() => handleNotificationClick(item)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <View style={styles.notiHeader}>
+                                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                                                {!item.is_read && <View style={[styles.unreadDot, { backgroundColor: primaryColor }]} />}
+                                                <ThemedText style={[styles.notiTitle, !item.is_read && { fontWeight: '900' }]}>
+                                                    {item.title}
+                                                </ThemedText>
+                                            </View>
+                                            <ThemedText style={[styles.notiDate, { color: textSecondary }]}>
+                                                {item.created_date ? new Date(item.created_date).toLocaleDateString() : ''}
+                                            </ThemedText>
+                                        </View>
+
+                                        <ThemedText style={[styles.notiSub, { color: textSecondary }]} numberOfLines={isSelected ? undefined : 2}>
+                                            {item.sub}
+                                        </ThemedText>
+
+                                        <View style={styles.notiFooter}>
+                                            <ThemedText style={[styles.notiBadge, item.is_read ? { color: textSecondary } : { color: primaryColor, fontWeight: '800' }]}>
+                                                {item.is_read ? '✓ Read' : '● New'}
+                                            </ThemedText>
+                                            {item.is_read && (item.read_at || item.read_datetime) && (
+                                                <ThemedText style={[styles.readTimeText, { color: textSecondary }]}>
+                                                    Read at: {new Date(item.read_at || item.read_datetime!).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                </ThemedText>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })
+                        )}
+                    </ScrollView>
+                </ThemedView>
+            </Modal>
+        );
+    }
 }
 
 
@@ -497,4 +657,15 @@ const styles = StyleSheet.create({
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 25, borderBottomWidth: 1 },
     closeBtn: { padding: 5 },
     modalScroll: { padding: 20 },
+    badgeContainer: { position: 'absolute', top: -3, right: -3, backgroundColor: '#ef4444', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+    badgeText: { color: 'white', fontSize: 10, fontWeight: '900' },
+    notificationCard: { borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 },
+    notiHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    unreadDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+    notiTitle: { fontSize: 16, fontWeight: '700', flex: 1 },
+    notiDate: { fontSize: 11, fontWeight: '600', marginLeft: 8 },
+    notiSub: { fontSize: 14, lineHeight: 20, marginBottom: 10 },
+    notiFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 8, marginTop: 4 },
+    notiBadge: { fontSize: 12, fontWeight: '600' },
+    readTimeText: { fontSize: 11, fontWeight: '500' },
 });
