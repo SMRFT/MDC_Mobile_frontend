@@ -2,7 +2,7 @@
   "expo": {
     "name": "MDC Salem",
     "slug": "MDC_Mobile_Frontend",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mdcmobilefrontend",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.manibalan.mdcmobilefrontend",
+      "bundleIdentifier": "com.shinova.mdcsalem",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
@@ -22,7 +22,6 @@
         ]
       }
     },
-
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -32,15 +31,15 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.manibalan.mdcmobilefrontend",
+      "package": "com.shinova.mdcsalem",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "POST_NOTIFICATIONS"
       ],
-      "versionCode": 6,
-      "version": "1.0.5"
+      "versionCode": 9,
+      "version": "1.0.6"
     },
     "web": {
       "output": "static",

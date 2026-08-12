@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:354647152298:android:a8b71e90717b036db0a2d3",
         "android_client_info": {
-          "package_name": "com.manibalan.mdcmobilefrontend"
+          "package_name": "com.shinova.mdcsalem"
         }
       },
       "oauth_client": [],
@@ -26,9 +26,9 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:354647152298:android:a8b71e90717b036db0a2d3",
+        "mobilesdk_app_id": "1:354647152298:android:cea694e05266bfffb0a2d3",
         "android_client_info": {
-          "package_name": "com.manibalan.MDC_Mobile_Frontend"
+          "package_name": "com.shinova.mdcsalem"
         }
       },
       "oauth_client": [],

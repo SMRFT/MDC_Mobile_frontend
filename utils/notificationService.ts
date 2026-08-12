@@ -106,25 +106,28 @@ export async function registerDeviceForPushNotifications(regNo: string): Promise
       return await registerFCMToken(regNo, fallbackToken);
     }
 
-    let fcmToken: string | null = null;
+    let pushToken: string | null = null;
     try {
-      const tokenData = await Notifications.getDevicePushTokenAsync();
-      fcmToken = typeof tokenData.data === 'string' ? tokenData.data : JSON.stringify(tokenData.data);
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId || (Constants as any).easConfig?.projectId;
+      const expoToken = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      );
+      pushToken = expoToken.data;
     } catch (e) {
       try {
-        const expoToken = await Notifications.getExpoPushTokenAsync();
-        fcmToken = expoToken.data;
+        const tokenData = await Notifications.getDevicePushTokenAsync();
+        pushToken = typeof tokenData.data === 'string' ? tokenData.data : JSON.stringify(tokenData.data);
       } catch (err) {
-        console.warn('Device push token not available, generating token identifier');
+        console.warn('Expo push token not available, generating fallback token');
       }
     }
 
-    if (!fcmToken) {
-      fcmToken = `FCM_DEV_TOKEN_${regNo.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    if (!pushToken) {
+      pushToken = `FCM_DEV_TOKEN_${regNo.replace(/[^a-zA-Z0-9]/g, '_')}`;
     }
 
-    console.log(`Registering FCM Token for ${regNo}:`, fcmToken);
-    return await registerFCMToken(regNo, fcmToken);
+    console.log(`Registering Expo Push Token for ${regNo}:`, pushToken);
+    return await registerFCMToken(regNo, pushToken);
 
   } catch (error) {
     console.error('Error in registerDeviceForPushNotifications:', error);
@@ -143,9 +146,10 @@ export function filterNotifications24h(notifications: NotificationItem[]): Notif
 
   return notifications.filter((item) => {
     if (!item.is_read) return true; // Always display unread notifications
-    const readTimestamp = item.read_at || item.read_datetime;
-    if (!readTimestamp) return true;
+    const readTimestamp = item.read_at || item.read_datetime || item.created_date;
+    if (!readTimestamp) return false; // If read but missing timestamp, exclude
     const readTime = new Date(readTimestamp).getTime();
+    if (isNaN(readTime)) return true;
     return now - readTime <= TWENTY_FOUR_HOURS_MS;
   });
 }
