@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
-import { StyleSheet, ScrollView, View, TouchableOpacity, Dimensions, Modal, Image, Alert, Platform, Linking, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+    StyleSheet, ScrollView, View, TouchableOpacity, Dimensions, Modal, Image,
+    Alert, Platform, Linking, ActivityIndicator, Text, Switch, Keyboard,
+    TouchableWithoutFeedback, KeyboardAvoidingView, TextInput, RefreshControl,
+    BackHandler
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,9 +16,94 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
 import Config from '@/constants/Config';
 import { downloadAssessmentReport } from '@/utils/reportDownloader';
+import { getUserNotifications, markNotificationAsRead, registerDeviceForPushNotifications, filterNotifications24h, NotificationItem } from '@/utils/notificationService';
+import { fetchQnaList, submitQuestion, QnaItem } from '../scripts/qnaApi';
 import * as FileSystem from 'expo-file-system/legacy';
 
+
 const { width, height } = Dimensions.get('window');
+
+const styles = StyleSheet.create({
+    container: { flex: 1 },
+    backgroundGrad: { position: 'absolute', left: 0, right: 0, top: 0, height: height },
+    header: { paddingTop: 60, paddingHorizontal: 22, paddingBottom: 18, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 10, borderBottomWidth: 1 },
+    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+    headerIcon: { width: 34, height: 34, marginRight: 10, borderRadius: 8 },
+    headerTitle: { fontSize: 22, fontWeight: '900', flex: 1, marginRight: 10 },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
+    actionCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.04)', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+    headerReg: { fontSize: 13, fontWeight: '800', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 },
+    scrollContent: { padding: 22 },
+    section: { borderRadius: 24, padding: 20, marginBottom: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
+    sectionTitle: { fontSize: 16, marginBottom: 15, fontWeight: '800' },
+    personalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+    personalTitle: { fontSize: 16, fontWeight: '900', marginLeft: 10 },
+    infoRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    infoItem: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
+    infoIcon: { marginRight: 12 },
+    infoLabel: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+    infoValue: { fontSize: 15, fontWeight: '700', marginTop: 2 },
+    buttonStack: { marginTop: 5 },
+    dashboardBtn: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 22, marginBottom: 15, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12 },
+    btnIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+    btnText: { flex: 1, color: 'white', fontSize: 17, fontWeight: '900' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 20, paddingTop: 110 },
+    dropdown: { width: 160, borderRadius: 18, borderWidth: 1, overflow: 'hidden', elevation: 20 },
+    dropdownItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
+    dropdownText: { marginLeft: 12, fontSize: 14, fontWeight: '600' },
+    profileModalContainer: { flex: 1 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 25, borderBottomWidth: 1 },
+    closeBtn: { padding: 5 },
+    modalScroll: { padding: 20 },
+    badgeContainer: { position: 'absolute', top: -3, right: -3, backgroundColor: '#ef4444', borderRadius: 10, minWidth: 18, height: 18, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+    badgeText: { color: 'white', fontSize: 10, fontWeight: '900' },
+    notificationCard: { borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 },
+    notiHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    unreadDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+    notiTitle: { fontSize: 16, fontWeight: '700', flex: 1 },
+    notiDate: { fontSize: 11, fontWeight: '600', marginLeft: 8 },
+    notiSub: { fontSize: 14, lineHeight: 20, marginBottom: 10 },
+    notiFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 8, marginTop: 4 },
+    notiBadge: { fontSize: 12, fontWeight: '600' },
+    readTimeText: { fontSize: 11, fontWeight: '500' },
+});
+
+const InfoItem = ({ label, value, icon, last }: any) => {
+    const primaryColor = useThemeColor({}, 'primary');
+    const borderColor = useThemeColor({}, 'border');
+    const textSecondary = useThemeColor({}, 'textSecondary');
+
+    if (!value || value === 'N/A' || value === 'null' || value === 'undefined' || value.trim?.() === '') {
+        return null;
+    }
+
+    const handleAction = () => {
+        if (label.toLowerCase().includes('phone')) {
+            const cleanPhone = value.replace(/[^\d+]/g, '');
+            Linking.openURL(`tel:${cleanPhone}`);
+        } else if (label.toLowerCase().includes('email')) {
+            Linking.openURL(`mailto:${value}`);
+        }
+    };
+
+    return (
+        <TouchableOpacity 
+            style={[styles.infoItem, !last && { borderBottomWidth: 1 }, { borderBottomColor: borderColor }]}
+            onPress={handleAction}
+            activeOpacity={0.7}
+        >
+            <Ionicons name={icon} size={18} color={primaryColor} style={styles.infoIcon} />
+            <View style={{ flex: 1 }}>
+                <ThemedText style={[styles.infoLabel, { color: textSecondary }]}>{label}</ThemedText>
+                <ThemedText style={styles.infoValue} numberOfLines={2}>{value}</ThemedText>
+            </View>
+            {(label.toLowerCase().includes('phone') || label.toLowerCase().includes('email')) && (
+               <Ionicons name="share-outline" size={14} color={primaryColor} style={{ opacity: 0.5 }} />
+            )}
+        </TouchableOpacity>
+    );
+};
 
 export default function DetailsScreen() {
     const { data } = useLocalSearchParams();
@@ -24,6 +114,120 @@ export default function DetailsScreen() {
     const [themeMenuVisible, setThemeMenuVisible] = useState(false);
     const [deactivating, setDeactivating] = useState(false);
     const [downloadingAssessment, setDownloadingAssessment] = useState(false);
+
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+    const [selectedNotification, setSelectedNotification] = useState<NotificationItem | null>(null);
+    const [loadingNotifications, setLoadingNotifications] = useState(false);
+
+    // Q&A State
+    const [qnaModalVisible, setQnaModalVisible] = useState(false);
+    const [qnaList, setQnaList] = useState<QnaItem[]>([]);
+    const [loadingQna, setLoadingQna] = useState(false);
+    const [refreshingQna, setRefreshingQna] = useState(false);
+    const [selectedQnaCategory, setSelectedQnaCategory] = useState('All');
+    const [selectedQnaType, setSelectedQnaType] = useState('All');
+    const [askQnaModalVisible, setAskQnaModalVisible] = useState(false);
+    const [submittingQna, setSubmittingQna] = useState(false);
+    const [questionText, setQuestionText] = useState('');
+    const [formCategory, setFormCategory] = useState('General');
+    const [askedBy, setAskedBy] = useState('');
+    const [isPersonal, setIsPersonal] = useState(true);
+
+    const loadNotifications = async (regNo: string, showLoading = true) => {
+        if (!regNo) return;
+        if (showLoading) setLoadingNotifications(true);
+        try {
+            const list = await getUserNotifications(regNo);
+            setNotifications(filterNotifications24h(list));
+        } finally {
+            if (showLoading) setLoadingNotifications(false);
+        }
+    };
+
+    const loadQnaData = async (regNo: string, showLoading = true, cat = selectedQnaCategory, type = selectedQnaType) => {
+        if (!regNo) return;
+        if (showLoading) setLoadingQna(true);
+        try {
+            const list = await fetchQnaList(regNo, cat, type);
+            setQnaList(list);
+        } catch (e) {
+            console.error("Error loading Q&A:", e);
+        } finally {
+            if (showLoading) setLoadingQna(false);
+        }
+    };
+
+    // Hardware Back Button listener to close active modal or go back
+    useEffect(() => {
+        const onBackPress = () => {
+            if (askQnaModalVisible) {
+                Keyboard.dismiss();
+                setAskQnaModalVisible(false);
+                return true;
+            }
+            if (qnaModalVisible) {
+                setQnaModalVisible(false);
+                return true;
+            }
+            if (notificationModalVisible) {
+                setNotificationModalVisible(false);
+                setSelectedNotification(null);
+                return true;
+            }
+            if (profileVisible) {
+                setProfileVisible(false);
+                return true;
+            }
+            if (themeMenuVisible) {
+                setThemeMenuVisible(false);
+                return true;
+            }
+            return false; // allow default back navigation when no modals are active
+        };
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+        return () => subscription.remove();
+    }, [askQnaModalVisible, qnaModalVisible, notificationModalVisible, profileVisible, themeMenuVisible]);
+
+    useEffect(() => {
+        const regNo = patientData?.registration?.registration_number;
+        if (regNo) {
+            // Automatically register device push token on launch
+            registerDeviceForPushNotifications(regNo);
+
+            // Initial load of notifications
+            loadNotifications(regNo, true);
+
+            // Automatic live background polling every 15 seconds without manual refresh
+            const interval = setInterval(() => {
+                getUserNotifications(regNo).then(list => setNotifications(list));
+            }, 15000);
+
+            return () => clearInterval(interval);
+        }
+    }, [patientData?.registration?.registration_number]);
+
+
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+
+    const handleNotificationClick = async (item: NotificationItem) => {
+        const notiId = item.notification_id || item.id;
+        setSelectedNotification(prev => (prev?.notification_id === notiId || prev?.id === notiId ? null : item));
+        if (!item.is_read && patientData?.registration?.registration_number) {
+            const regNo = patientData.registration.registration_number;
+            const res = await markNotificationAsRead(notiId, regNo);
+            if (res.success) {
+                const readTs = res.read_at || res.read_datetime || new Date().toISOString();
+                setNotifications(prev => prev.map(n => 
+                    (n.notification_id === notiId || n.id === notiId)
+                        ? { ...n, is_read: true, read_datetime: readTs, read_at: readTs }
+                        : n
+                ));
+            }
+        }
+    };
+
 
     const handleDownloadAssessment = (regNo: string) => {
         handleDownloadAssessmentReport(regNo);
@@ -97,123 +301,6 @@ export default function DetailsScreen() {
         }
         return parts.join(', ');
     })();
-
-    const ThemeDropdown = () => (
-        <Modal
-            transparent
-            visible={themeMenuVisible}
-            animationType="fade"
-            onRequestClose={() => setThemeMenuVisible(false)}
-        >
-            <TouchableOpacity
-                style={styles.modalOverlay}
-                activeOpacity={1}
-                onPress={() => setThemeMenuVisible(false)}
-            >
-                <View style={[styles.dropdown, { backgroundColor: cardColor, borderColor: borderColor }]}>
-                    {(['system', 'light', 'dark'] as const).map((mode) => (
-                        <TouchableOpacity
-                            key={mode}
-                            style={[styles.dropdownItem, themeMode === mode && { backgroundColor: primaryColor + '15' }]}
-                            onPress={() => {
-                                setThemeMode(mode);
-                                setThemeMenuVisible(false);
-                            }}
-                        >
-                            <Ionicons
-                                name={mode === 'system' ? 'settings-outline' : mode === 'light' ? 'sunny-outline' : 'moon-outline'}
-                                size={18}
-                                color={themeMode === mode ? primaryColor : textSecondary}
-                            />
-                            <ThemedText style={[styles.dropdownText, themeMode === mode && { color: primaryColor, fontWeight: '700' }]}>
-                                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                            </ThemedText>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            </TouchableOpacity>
-        </Modal>
-    );
-
-    const ProfileModal = () => (
-        <Modal
-            visible={profileVisible}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={() => setProfileVisible(false)}
-        >
-            <ThemedView style={styles.profileModalContainer}>
-                <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
-                    <ThemedText type="title">MDC Profile</ThemedText>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity 
-                            style={{ marginRight: 15, backgroundColor: '#fee2e2', padding: 6, borderRadius: 10 }} 
-                            onPress={() => {
-                                setProfileVisible(false);
-                                handleLogout();
-                            }}
-                        >
-                            <Ionicons name="log-out-outline" size={18} color="#ef4444" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setProfileVisible(false)} style={styles.closeBtn}>
-                            <Ionicons name="close" size={28} color={textSecondary} />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <ScrollView contentContainerStyle={styles.modalScroll}>
-                    {/* Basic Information */}
-                    <View style={[styles.section, { backgroundColor: cardColor }]}>
-                        <ThemedText type="subtitle" style={styles.sectionTitle}>Basic Information</ThemedText>
-                        <InfoItem label="Date of Birth" value={formatDate(registration.dob) || 'N/A'} icon="calendar-outline" />
-                        <InfoItem label="Gender" value={registration.sex} icon="transgender-outline" />
-                        <InfoItem label="Age" value={ageString} icon="hourglass-outline" last />
-                    </View>
-
-                    {/* Personal Information */}
-                    <View style={[styles.section, { backgroundColor: cardColor }]}>
-                        <ThemedText type="subtitle" style={styles.sectionTitle}>Personal Information</ThemedText>
-                        <View style={styles.infoRow}>
-                            <InfoItem label="Mother" value={registration.mother_name} icon="person-outline" />
-                            <InfoItem label="Mother Phone" value={registration.mother_phone_number} icon="call-outline" />
-                        </View>
-                        <View style={styles.infoRow}>
-                            <InfoItem label="Father" value={registration.father_name || 'N/A'} icon="person-outline" />
-                            <InfoItem label="Father Phone" value={registration.father_phone_number || 'N/A'} icon="call-outline" last />
-                        </View>
-                    </View>
-
-                    {/* Address Information */}
-                    <View style={[styles.section, { backgroundColor: cardColor }]}>
-                        <ThemedText type="subtitle" style={styles.sectionTitle}>Contact & Address</ThemedText>
-                        <InfoItem label="Address" value={registration.address} icon="location-outline" />
-                        <InfoItem label="Email" value={registration.mail_id} icon="mail-outline" last />
-                    </View>
-
-                    {/* Account Settings */}
-                    <View style={[styles.section, { backgroundColor: cardColor, borderColor: '#fee2e2', borderWidth: 1 }]}>
-                        <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#ef4444' }]}>Account Settings</ThemedText>
-                        
-                        <TouchableOpacity 
-                            style={[styles.infoItem, { borderBottomWidth: 0, opacity: deactivating ? 0.6 : 1 }]}
-                            onPress={handleDeactivateAccount}
-                            disabled={deactivating}
-                            activeOpacity={0.7}
-                        >
-                            <Ionicons name="trash-outline" size={18} color="#ef4444" style={styles.infoIcon} />
-                            <View style={{ flex: 1 }}>
-                                <ThemedText style={[styles.infoLabel, { color: '#ef4444' }]}>DEACTIVATE ACCOUNT</ThemedText>
-                                <ThemedText style={[styles.infoValue, { color: textSecondary, fontSize: 13, fontWeight: '500', marginTop: 2 }]} numberOfLines={2}>
-                                    Permanently deactivate your portal access
-                                </ThemedText>
-                            </View>
-                            <Ionicons name="chevron-forward" size={16} color="#ef4444" style={{ opacity: 0.7 }} />
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
-            </ThemedView>
-        </Modal>
-    );
 
     const handleLogout = () => {
         const clearSavedCredentials = async () => {
@@ -316,6 +403,23 @@ export default function DetailsScreen() {
                         </ThemedText>
                     </View>
                     <View style={styles.headerActions}>
+                        <TouchableOpacity 
+                            style={styles.actionCircle} 
+                            onPress={() => {
+                                loadNotifications(registration.registration_number, notifications.length === 0);
+                                setNotificationModalVisible(true);
+                            }}
+                        >
+                            <Ionicons name="notifications-outline" size={24} color={primaryColor} />
+                            {unreadCount > 0 && (
+                                <View style={styles.badgeContainer}>
+                                    <Text style={styles.badgeText}>
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
                         <TouchableOpacity style={styles.actionCircle} onPress={() => setProfileVisible(true)}>
                             <Ionicons name="person-circle-outline" size={26} color={primaryColor} />
                         </TouchableOpacity>
@@ -407,7 +511,7 @@ export default function DetailsScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#0369a1', marginTop: 12 }]}
+                        style={[styles.dashboardBtn, { backgroundColor: '#0369a1' }]}
                         onPress={() => router.push({ pathname: '/assessmentReport' as any, params: { regNo: registration.registration_number } })}
                     >
                         <View style={styles.btnIcon}>
@@ -416,85 +520,566 @@ export default function DetailsScreen() {
                         <ThemedText style={styles.btnText}>Assessment Report</ThemedText>
                         <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
                     </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.dashboardBtn, { backgroundColor: '#7c3aed' }]}
+                        onPress={() => {
+                            loadQnaData(registration.registration_number, true);
+                            setQnaModalVisible(true);
+                        }}
+                    >
+                        <View style={styles.btnIcon}>
+                            <Ionicons name="chatbubbles" size={24} color="white" />
+                        </View>
+                        <ThemedText style={styles.btnText}>Q&A Forum</ThemedText>
+                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+                    </TouchableOpacity>
                 </View>
 
                 <View style={{ height: 40 }} />
             </ScrollView>
 
-            <ThemeDropdown />
-            <ProfileModal />
+            {/* Theme Dropdown Modal */}
+            <Modal
+                transparent
+                visible={themeMenuVisible}
+                animationType="fade"
+                onRequestClose={() => setThemeMenuVisible(false)}
+            >
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setThemeMenuVisible(false)}
+                >
+                    <View style={[styles.dropdown, { backgroundColor: cardColor, borderColor: borderColor }]}>
+                        {(['system', 'light', 'dark'] as const).map((mode) => (
+                            <TouchableOpacity
+                                key={mode}
+                                style={[styles.dropdownItem, themeMode === mode && { backgroundColor: primaryColor + '15' }]}
+                                onPress={() => {
+                                    setThemeMode(mode);
+                                    setThemeMenuVisible(false);
+                                }}
+                            >
+                                <Ionicons
+                                    name={mode === 'system' ? 'settings-outline' : mode === 'light' ? 'sunny-outline' : 'moon-outline'}
+                                    size={18}
+                                    color={themeMode === mode ? primaryColor : textSecondary}
+                                />
+                                <ThemedText style={[styles.dropdownText, themeMode === mode && { color: primaryColor, fontWeight: '700' }]}>
+                                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                                </ThemedText>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Profile Modal */}
+            <Modal
+                visible={profileVisible}
+                animationType="slide"
+                presentationStyle="pageSheet"
+                onRequestClose={() => setProfileVisible(false)}
+            >
+                <ThemedView style={styles.profileModalContainer}>
+                    <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+                        <ThemedText type="title">MDC Profile</ThemedText>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <TouchableOpacity 
+                                style={{ marginRight: 15, backgroundColor: '#fee2e2', padding: 6, borderRadius: 10 }} 
+                                onPress={() => {
+                                    setProfileVisible(false);
+                                    handleLogout();
+                                }}
+                            >
+                                <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setProfileVisible(false)} style={styles.closeBtn}>
+                                <Ionicons name="close" size={28} color={textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <ScrollView contentContainerStyle={styles.modalScroll}>
+                        {/* Basic Information */}
+                        <View style={[styles.section, { backgroundColor: cardColor }]}>
+                            <ThemedText type="subtitle" style={styles.sectionTitle}>Basic Information</ThemedText>
+                            <InfoItem label="Date of Birth" value={formatDate(registration.dob) || 'N/A'} icon="calendar-outline" />
+                            <InfoItem label="Gender" value={registration.sex} icon="transgender-outline" />
+                            <InfoItem label="Age" value={ageString} icon="hourglass-outline" last />
+                        </View>
+
+                        {/* Personal Information */}
+                        <View style={[styles.section, { backgroundColor: cardColor }]}>
+                            <ThemedText type="subtitle" style={styles.sectionTitle}>Personal Information</ThemedText>
+                            <View style={styles.infoRow}>
+                                <InfoItem label="Mother" value={registration.mother_name} icon="person-outline" />
+                                <InfoItem label="Mother Phone" value={registration.mother_phone_number} icon="call-outline" />
+                            </View>
+                            <View style={styles.infoRow}>
+                                <InfoItem label="Father" value={registration.father_name || 'N/A'} icon="person-outline" />
+                                <InfoItem label="Father Phone" value={registration.father_phone_number || 'N/A'} icon="call-outline" last />
+                            </View>
+                        </View>
+
+                        {/* Address Information */}
+                        <View style={[styles.section, { backgroundColor: cardColor }]}>
+                            <ThemedText type="subtitle" style={styles.sectionTitle}>Contact & Address</ThemedText>
+                            <InfoItem label="Address" value={registration.address} icon="location-outline" />
+                            <InfoItem label="Email" value={registration.mail_id} icon="mail-outline" last />
+                        </View>
+
+                        {/* Account Settings */}
+                        <View style={[styles.section, { backgroundColor: cardColor, borderColor: '#fee2e2', borderWidth: 1 }]}>
+                            <ThemedText type="subtitle" style={[styles.sectionTitle, { color: '#ef4444' }]}>Account Settings</ThemedText>
+                            
+                            <TouchableOpacity 
+                                style={[styles.infoItem, { borderBottomWidth: 0, opacity: deactivating ? 0.6 : 1 }]}
+                                onPress={handleDeactivateAccount}
+                                disabled={deactivating}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="trash-outline" size={18} color="#ef4444" style={styles.infoIcon} />
+                                <View style={{ flex: 1 }}>
+                                    <ThemedText style={[styles.infoLabel, { color: '#ef4444' }]}>DEACTIVATE ACCOUNT</ThemedText>
+                                    <ThemedText style={[styles.infoValue, { color: textSecondary, fontSize: 13, fontWeight: '500', marginTop: 2 }]} numberOfLines={2}>
+                                        Permanently deactivate your portal access
+                                    </ThemedText>
+                                </View>
+                                <Ionicons name="chevron-forward" size={16} color="#ef4444" style={{ opacity: 0.7 }} />
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </ThemedView>
+            </Modal>
+
+            {/* Notification Modal */}
+            <Modal
+                animationType="slide"
+                transparent={false}
+                visible={notificationModalVisible}
+                onRequestClose={() => {
+                    setNotificationModalVisible(false);
+                    setSelectedNotification(null);
+                }}
+            >
+                <ThemedView style={[styles.profileModalContainer, { backgroundColor }]}>
+                    <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="notifications" size={24} color={primaryColor} style={{ marginRight: 10 }} />
+                            <ThemedText type="title">Notifications</ThemedText>
+                        </View>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setNotificationModalVisible(false);
+                                setSelectedNotification(null);
+                            }} 
+                            style={styles.closeBtn}
+                        >
+                            <Ionicons name="close" size={26} color={primaryColor} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView contentContainerStyle={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                        {loadingNotifications ? (
+                            <ActivityIndicator size="large" color={primaryColor} style={{ marginTop: 40 }} />
+                        ) : notifications.length === 0 ? (
+                            <View style={{ alignItems: 'center', marginTop: 60 }}>
+                                <Ionicons name="notifications-off-outline" size={48} color={textSecondary} style={{ opacity: 0.5 }} />
+                                <ThemedText style={{ marginTop: 16, color: textSecondary, fontSize: 16, fontWeight: '600' }}>
+                                    No active notifications
+                                </ThemedText>
+                            </View>
+                        ) : (
+                            notifications.map((item) => {
+                                const isSelected = selectedNotification?.notification_id === item.notification_id;
+                                return (
+                                    <TouchableOpacity
+                                        key={item.notification_id || item.id}
+                                        style={[
+                                            styles.notificationCard,
+                                            { backgroundColor: cardColor, borderColor: item.is_read ? borderColor : primaryColor },
+                                            !item.is_read && { borderWidth: 1.5 }
+                                        ]}
+                                        onPress={() => handleNotificationClick(item)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <View style={styles.notiHeader}>
+                                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                                                {!item.is_read && <View style={[styles.unreadDot, { backgroundColor: primaryColor }]} />}
+                                                <ThemedText style={[styles.notiTitle, !item.is_read && { fontWeight: '900' }]}>
+                                                    {item.title}
+                                                </ThemedText>
+                                            </View>
+                                            <ThemedText style={[styles.notiDate, { color: textSecondary }]}>
+                                                {item.created_date ? new Date(item.created_date).toLocaleDateString() : ''}
+                                            </ThemedText>
+                                        </View>
+
+                                        <ThemedText style={[styles.notiSub, { color: textSecondary }]} numberOfLines={isSelected ? undefined : 2}>
+                                            {item.sub}
+                                        </ThemedText>
+
+                                        <View style={styles.notiFooter}>
+                                            <ThemedText style={[styles.notiBadge, item.is_read ? { color: textSecondary } : { color: primaryColor, fontWeight: '800' }]}>
+                                                {item.is_read ? '✓ Read' : '● New'}
+                                            </ThemedText>
+                                            {item.is_read && (item.read_at || item.read_datetime) && (
+                                                <ThemedText style={[styles.readTimeText, { color: textSecondary }]}>
+                                                    Read at: {new Date(item.read_at || item.read_datetime!).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                </ThemedText>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })
+                        )}
+                    </ScrollView>
+                </ThemedView>
+            </Modal>
+            {/* Q&A Modal */}
+            <Modal
+                animationType="slide"
+                transparent={false}
+                visible={qnaModalVisible}
+                onRequestClose={() => {
+                    setQnaModalVisible(false);
+                }}
+            >
+                <ThemedView style={[styles.profileModalContainer, { backgroundColor }]}>
+                    {/* Header */}
+                    <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="chatbubbles" size={24} color={primaryColor} style={{ marginRight: 10 }} />
+                            <View style={{ flex: 1 }}>
+                                <ThemedText type="title">Q&A Forum</ThemedText>
+                                <ThemedText style={{ fontSize: 11, color: textSecondary, fontWeight: '600' }}>
+                                    Last 7 days • {registration.name_of_child}
+                                </ThemedText>
+                            </View>
+                        </View>
+                        <TouchableOpacity
+                            style={{ backgroundColor: primaryColor, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 12 }}
+                            onPress={() => setAskQnaModalVisible(true)}
+                        >
+                            <Ionicons name="add" size={18} color="white" />
+                            <ThemedText style={{ color: 'white', fontWeight: '800', fontSize: 13, marginLeft: 2 }}>Ask</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            onPress={() => setQnaModalVisible(false)} 
+                            style={styles.closeBtn}
+                        >
+                            <Ionicons name="close" size={26} color={primaryColor} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Scope Filter Bar (All / Personal / Common) */}
+                    <View style={{ flexDirection: 'row', borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.04)', padding: 3, marginHorizontal: 20, marginTop: 12 }}>
+                        {['All', 'Personal', 'Common'].map((t) => {
+                            const isSelected = selectedQnaType === t;
+                            return (
+                                <TouchableOpacity
+                                    key={t}
+                                    style={{ flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 7, borderRadius: 12, backgroundColor: isSelected ? primaryColor : 'transparent' }}
+                                    onPress={() => {
+                                        setSelectedQnaType(t);
+                                        loadQnaData(registration.registration_number, true, selectedQnaCategory, t);
+                                    }}
+                                >
+                                    <Ionicons
+                                        name={t === 'Personal' ? 'lock-closed-outline' : t === 'Common' ? 'earth-outline' : 'layers-outline'}
+                                        size={13}
+                                        color={isSelected ? 'white' : textSecondary}
+                                        style={{ marginRight: 4 }}
+                                    />
+                                    <ThemedText style={{ fontSize: 12, color: isSelected ? 'white' : textSecondary, fontWeight: isSelected ? '800' : '600' }}>
+                                        {t === 'All' ? 'All Questions' : t}
+                                    </ThemedText>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+
+                    {/* Category Scroll */}
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10, marginHorizontal: 20, maxHeight: 36 }}>
+                        {['All', 'General', 'Therapy', 'Medical', 'Behavioral', 'Daily Care'].map((cat) => {
+                            const isSelected = selectedQnaCategory === cat;
+                            return (
+                                <TouchableOpacity
+                                    key={cat}
+                                    style={{ paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: isSelected ? primaryColor : borderColor, backgroundColor: isSelected ? primaryColor + '20' : cardColor, marginRight: 6 }}
+                                    onPress={() => {
+                                        setSelectedQnaCategory(cat);
+                                        loadQnaData(registration.registration_number, true, cat, selectedQnaType);
+                                    }}
+                                >
+                                    <ThemedText style={{ fontSize: 12, color: isSelected ? primaryColor : textSecondary, fontWeight: isSelected ? '800' : '500' }}>
+                                        {cat}
+                                    </ThemedText>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+
+                    {/* Main Content List */}
+                    <ScrollView
+                        contentContainerStyle={styles.modalScroll}
+                        showsVerticalScrollIndicator={false}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshingQna}
+                                onRefresh={async () => {
+                                    setRefreshingQna(true);
+                                    await loadQnaData(registration.registration_number, false);
+                                    setRefreshingQna(false);
+                                }}
+                                colors={[primaryColor]}
+                                tintColor={primaryColor}
+                            />
+                        }
+                    >
+                        {loadingQna && !refreshingQna ? (
+                            <ActivityIndicator size="large" color={primaryColor} style={{ marginTop: 40 }} />
+                        ) : qnaList.length === 0 ? (
+                            <View style={{ alignItems: 'center', marginTop: 50, paddingHorizontal: 20 }}>
+                                <Ionicons name="chatbubbles-outline" size={48} color={textSecondary} style={{ opacity: 0.4 }} />
+                                <ThemedText style={{ marginTop: 14, fontSize: 16, fontWeight: '800' }}>No Questions Found</ThemedText>
+                                <ThemedText style={{ marginTop: 6, fontSize: 13, textAlign: 'center', color: textSecondary }}>
+                                    No questions submitted within the last week matching your filter.
+                                </ThemedText>
+                                <TouchableOpacity
+                                    style={{ backgroundColor: primaryColor, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, marginTop: 16 }}
+                                    onPress={() => setAskQnaModalVisible(true)}
+                                >
+                                    <Ionicons name="help-circle-outline" size={18} color="white" style={{ marginRight: 6 }} />
+                                    <ThemedText style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>Ask a Question</ThemedText>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            qnaList.map((item) => {
+                                const isAnswered = item.status?.toLowerCase() === 'answered' || (item.answers && item.answers.length > 0);
+                                const isPersonalQ = item.is_personal !== false;
+                                const createdStr = item.created_date ? new Date(item.created_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
+
+                                return (
+                                    <View key={item.qa_id || item._id || item.id} style={[styles.notificationCard, { backgroundColor: cardColor, borderColor: borderColor }]}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                                {/* Scope Badge */}
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1, backgroundColor: isPersonalQ ? '#e0e7ff' : '#f0fdf4', borderColor: isPersonalQ ? '#6366f1' : '#22c55e' }}>
+                                                    <Ionicons name={isPersonalQ ? 'lock-closed' : 'earth'} size={10} color={isPersonalQ ? '#4338ca' : '#15803d'} style={{ marginRight: 3 }} />
+                                                    <ThemedText style={{ fontSize: 10, fontWeight: '800', color: isPersonalQ ? '#4338ca' : '#15803d' }}>
+                                                        {isPersonalQ ? 'Personal' : 'Common'}
+                                                    </ThemedText>
+                                                </View>
+                                                {/* Category Badge */}
+                                                <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: primaryColor + '15' }}>
+                                                    <ThemedText style={{ fontSize: 10, fontWeight: '800', color: primaryColor, textTransform: 'uppercase' }}>
+                                                        {item.category || 'General'}
+                                                    </ThemedText>
+                                                </View>
+                                                {/* Status Badge */}
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: isAnswered ? '#dcfce7' : '#fef3c7' }}>
+                                                    <ThemedText style={{ fontSize: 10, fontWeight: '800', color: isAnswered ? '#166534' : '#b45309' }}>
+                                                        {isAnswered ? 'Answered' : 'Pending'}
+                                                    </ThemedText>
+                                                </View>
+                                            </View>
+
+                                            <ThemedText style={{ fontSize: 11, fontWeight: '700', color: textSecondary }}>
+                                                {item.qa_id} {createdStr ? `• ${createdStr}` : ''}
+                                            </ThemedText>
+                                        </View>
+
+                                        {/* Question Text */}
+                                        <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+                                            <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: isPersonalQ ? '#4f46e5' : '#059669', justifyContent: 'center', alignItems: 'center', marginRight: 8, marginTop: 2 }}>
+                                                <Text style={{ color: 'white', fontWeight: '900', fontSize: 12 }}>Q</Text>
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <ThemedText style={{ fontSize: 14, fontWeight: '700', lineHeight: 20 }}>
+                                                    {item.question}
+                                                </ThemedText>
+                                                {item.asked_by ? (
+                                                    <ThemedText style={{ fontSize: 11, marginTop: 2, color: textSecondary }}>
+                                                        Asked by: {item.asked_by}
+                                                    </ThemedText>
+                                                ) : null}
+                                            </View>
+                                        </View>
+
+                                        {/* Answers */}
+                                        {item.answers && item.answers.length > 0 ? (
+                                            <View style={{ borderRadius: 12, borderWidth: 1, padding: 10, backgroundColor: primaryColor + '08', borderColor: primaryColor + '20' }}>
+                                                <ThemedText style={{ fontSize: 11, fontWeight: '800', color: primaryColor, marginBottom: 4 }}>
+                                                    RESPONSES ({item.answers.length})
+                                                </ThemedText>
+                                                {item.answers.map((ans, idx) => {
+                                                    const ansText = typeof ans === 'string' ? ans : (ans.answer || ans.text || JSON.stringify(ans));
+                                                    const ansBy = typeof ans === 'object' ? (ans.answered_by || ans.by || 'Doctor / Therapist') : 'Medical Staff';
+                                                    return (
+                                                        <View key={idx} style={{ marginTop: idx > 0 ? 6 : 0, paddingTop: idx > 0 ? 6 : 0, borderTopWidth: idx > 0 ? 1 : 0, borderTopColor: borderColor }}>
+                                                            <ThemedText style={{ fontSize: 13, lineHeight: 18 }}>{ansText}</ThemedText>
+                                                            <ThemedText style={{ fontSize: 10, fontWeight: '700', color: primaryColor, marginTop: 3 }}>
+                                                                ✓ {ansBy}
+                                                            </ThemedText>
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        ) : (
+                                            <ThemedText style={{ fontSize: 11, fontStyle: 'italic', color: textSecondary, marginTop: 4 }}>
+                                                Awaiting staff response
+                                            </ThemedText>
+                                        )}
+                                    </View>
+                                );
+                            })
+                        )}
+                    </ScrollView>
+                </ThemedView>
+
+                {/* Sub-Modal: Ask a Question */}
+                <Modal
+                    visible={askQnaModalVisible}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={() => {
+                        Keyboard.dismiss();
+                        setAskQnaModalVisible(false);
+                    }}
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+                    >
+                        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                            <View style={{ flex: 1, width: '100%', justifyContent: 'flex-end' }}>
+                                <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                                    <View style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, backgroundColor: cardColor, width: '100%' }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                            <ThemedText type="title" style={{ fontSize: 18, fontWeight: '800' }}>
+                                                Ask a Question
+                                            </ThemedText>
+                                            <TouchableOpacity 
+                                                onPress={() => {
+                                                    Keyboard.dismiss();
+                                                    setAskQnaModalVisible(false);
+                                                }} 
+                                                style={{ padding: 4 }}
+                                            >
+                                                <Ionicons name="close" size={24} color={textSecondary} />
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        <ScrollView 
+                                            style={{ maxHeight: height * 0.60 }} 
+                                            showsVerticalScrollIndicator={false}
+                                            keyboardShouldPersistTaps="handled"
+                                        >
+                                            {/* Type Toggle */}
+                                            <ThemedText style={{ fontSize: 11, fontWeight: '800', color: textSecondary, marginBottom: 6 }}>QUESTION TYPE</ThemedText>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: borderColor, backgroundColor: backgroundColor, marginBottom: 10 }}>
+                                                <View style={{ flex: 1, paddingRight: 8 }}>
+                                                    <ThemedText style={{ fontWeight: '800', fontSize: 13 }}>
+                                                        {isPersonal ? 'Personal Question' : 'Common Question'}
+                                                    </ThemedText>
+                                                    <ThemedText style={{ fontSize: 11, color: textSecondary }}>
+                                                        {isPersonal ? 'Private to care team' : 'Visible in public Q&A'}
+                                                    </ThemedText>
+                                                </View>
+                                                <Switch
+                                                    value={isPersonal}
+                                                    onValueChange={setIsPersonal}
+                                                    trackColor={{ false: '#10b981', true: '#6366f1' }}
+                                                    thumbColor="white"
+                                                />
+                                            </View>
+
+                                            {/* Category */}
+                                            <ThemedText style={{ fontSize: 11, fontWeight: '800', color: textSecondary, marginBottom: 6 }}>CATEGORY</ThemedText>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                                                {['General', 'Therapy', 'Medical', 'Behavioral', 'Daily Care'].map((cat) => (
+                                                    <TouchableOpacity
+                                                        key={cat}
+                                                        style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: formCategory === cat ? primaryColor : borderColor, backgroundColor: formCategory === cat ? primaryColor : 'transparent' }}
+                                                        onPress={() => setFormCategory(cat)}
+                                                    >
+                                                        <ThemedText style={{ fontSize: 12, fontWeight: '600', color: formCategory === cat ? 'white' : textSecondary }}>
+                                                            {cat}
+                                                        </ThemedText>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+
+                                            {/* Name */}
+                                            <ThemedText style={{ fontSize: 11, fontWeight: '800', color: textSecondary, marginBottom: 6 }}>YOUR NAME (OPTIONAL)</ThemedText>
+                                            <TextInput
+                                                style={{ borderRadius: 12, borderWidth: 1, borderColor: borderColor, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, backgroundColor: backgroundColor, color: textSecondary, marginBottom: 10 }}
+                                                placeholder="e.g. Parent / Guardian"
+                                                placeholderTextColor={textSecondary}
+                                                value={askedBy}
+                                                onChangeText={setAskedBy}
+                                            />
+
+                                            {/* Question */}
+                                            <ThemedText style={{ fontSize: 11, fontWeight: '800', color: textSecondary, marginBottom: 6 }}>YOUR QUESTION *</ThemedText>
+                                            <TextInput
+                                                style={{ borderRadius: 12, borderWidth: 1, borderColor: borderColor, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, backgroundColor: backgroundColor, color: textSecondary, minHeight: 90, textAlignVertical: 'top' }}
+                                                placeholder="Type your question..."
+                                                placeholderTextColor={textSecondary}
+                                                multiline
+                                                numberOfLines={4}
+                                                value={questionText}
+                                                onChangeText={setQuestionText}
+                                            />
+                                        </ScrollView>
+
+                                        <TouchableOpacity
+                                            style={{ backgroundColor: primaryColor, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 14, borderRadius: 16, marginTop: 14, opacity: submittingQna ? 0.7 : 1 }}
+                                            onPress={async () => {
+                                                if (!questionText.trim()) {
+                                                    Alert.alert("Required", "Please type a question.");
+                                                    return;
+                                                }
+                                                setSubmittingQna(true);
+                                                try {
+                                                    await submitQuestion({
+                                                        question: questionText.trim(),
+                                                        category: formCategory,
+                                                        asked_by: askedBy.trim() || 'Parent/Guardian',
+                                                        registration_number: registration.registration_number,
+                                                        patient_name: registration.name_of_child,
+                                                        is_personal: isPersonal,
+                                                    });
+                                                    Alert.alert("Submitted", "Your question was submitted successfully.");
+                                                    setQuestionText('');
+                                                    setAskQnaModalVisible(false);
+                                                    Keyboard.dismiss();
+                                                    loadQnaData(registration.registration_number, false);
+                                                } catch (e) {
+                                                    Alert.alert("Error", "Could not submit question.");
+                                                } finally {
+                                                    setSubmittingQna(false);
+                                                }
+                                            }}
+                                            disabled={submittingQna}
+                                        >
+                                            {submittingQna ? (
+                                                <ActivityIndicator color="white" />
+                                            ) : (
+                                                <ThemedText style={{ color: 'white', fontWeight: '800', fontSize: 15 }}>Submit Question</ThemedText>
+                                            )}
+                                        </TouchableOpacity>
+                                    </View>
+                                </TouchableWithoutFeedback>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </KeyboardAvoidingView>
+                </Modal>
+            </Modal>
         </ThemedView>
     );
 }
-
-
-const InfoItem = ({ label, value, icon, last }: any) => {
-    const primaryColor = useThemeColor({}, 'primary');
-    const borderColor = useThemeColor({}, 'border');
-    const textSecondary = useThemeColor({}, 'textSecondary');
-
-    if (!value || value === 'N/A' || value === 'null' || value === 'undefined' || value.trim?.() === '') {
-        return null;
-    }
-
-    const handleAction = () => {
-        if (label.toLowerCase().includes('phone')) {
-            const cleanPhone = value.replace(/[^\d+]/g, '');
-            Linking.openURL(`tel:${cleanPhone}`);
-        } else if (label.toLowerCase().includes('email')) {
-            Linking.openURL(`mailto:${value}`);
-        }
-    };
-
-    return (
-        <TouchableOpacity 
-            style={[styles.infoItem, !last && { borderBottomWidth: 1 }, { borderBottomColor: borderColor }]}
-            onPress={handleAction}
-            activeOpacity={0.7}
-        >
-            <Ionicons name={icon} size={18} color={primaryColor} style={styles.infoIcon} />
-            <View style={{ flex: 1 }}>
-                <ThemedText style={[styles.infoLabel, { color: textSecondary }]}>{label}</ThemedText>
-                <ThemedText style={styles.infoValue} numberOfLines={2}>{value}</ThemedText>
-            </View>
-            {(label.toLowerCase().includes('phone') || label.toLowerCase().includes('email')) && (
-               <Ionicons name="share-outline" size={14} color={primaryColor} style={{ opacity: 0.5 }} />
-            )}
-        </TouchableOpacity>
-    );
-};
-
-const styles = StyleSheet.create({
-    container: { flex: 1 },
-    backgroundGrad: { position: 'absolute', left: 0, right: 0, top: 0, height: height },
-    header: { paddingTop: 60, paddingHorizontal: 22, paddingBottom: 18, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.1, shadowRadius: 10, borderBottomWidth: 1 },
-    headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-    headerIcon: { width: 34, height: 34, marginRight: 10, borderRadius: 8 },
-    headerTitle: { fontSize: 22, fontWeight: '900', flex: 1, marginRight: 10 },
-    headerActions: { flexDirection: 'row', alignItems: 'center' },
-    actionCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.04)', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
-    headerReg: { fontSize: 13, fontWeight: '800', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 },
-    scrollContent: { padding: 22 },
-    section: { borderRadius: 24, padding: 20, marginBottom: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
-    sectionTitle: { fontSize: 16, marginBottom: 15, fontWeight: '800' },
-    personalHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-    personalTitle: { fontSize: 16, fontWeight: '900', marginLeft: 10 },
-    infoRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    infoItem: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-    infoIcon: { marginRight: 12 },
-    infoLabel: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
-    infoValue: { fontSize: 15, fontWeight: '700', marginTop: 2 },
-    buttonStack: { marginTop: 5 },
-    dashboardBtn: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 22, marginBottom: 15, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12 },
-    btnIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-    btnText: { flex: 1, color: 'white', fontSize: 17, fontWeight: '900' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 20, paddingTop: 110 },
-    dropdown: { width: 160, borderRadius: 18, borderWidth: 1, overflow: 'hidden', elevation: 20 },
-    dropdownItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
-    dropdownText: { marginLeft: 12, fontSize: 14, fontWeight: '600' },
-    profileModalContainer: { flex: 1 },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 25, borderBottomWidth: 1 },
-    closeBtn: { padding: 5 },
-    modalScroll: { padding: 20 },
-});

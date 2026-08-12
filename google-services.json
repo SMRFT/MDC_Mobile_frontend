@@ -1,21 +1,40 @@
 {
   "project_info": {
-    "project_number": "723536567054",
-    "project_id": "otp-login-e54c1",
-    "storage_bucket": "otp-login-e54c1.firebasestorage.app"
+    "project_number": "354647152298",
+    "project_id": "milestone-salem-1555f",
+    "storage_bucket": "milestone-salem-1555f.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:723536567054:android:d6486676ff92b7c459955f",
+        "mobilesdk_app_id": "1:354647152298:android:a8b71e90717b036db0a2d3",
         "android_client_info": {
-          "package_name": "com.manibalan.MDC_Mobile_Frontend"
+          "package_name": "com.shinova.mdcsalem"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAYN_1mqsVi8A067_XYMasQl-zkfpkvzkU"
+          "current_key": "AIzaSyAk6hn9yS5_WvRGLTfuPVru9KXb91WiRuI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:354647152298:android:cea694e05266bfffb0a2d3",
+        "android_client_info": {
+          "package_name": "com.shinova.mdcsalem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAk6hn9yS5_WvRGLTfuPVru9KXb91WiRuI"
         }
       ],
       "services": {

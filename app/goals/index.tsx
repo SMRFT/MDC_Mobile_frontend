@@ -186,16 +186,13 @@ export default function GoalsScreen() {
     };
 
     useEffect(() => {
-        if (regNoParam) {
+        if (regNo) {
             handleSearch();
         }
-    }, [regNoParam]);
+    }, [regNo]);
 
     const handleSearch = async () => {
-        if (!regNo.trim()) {
-            Alert.alert("Required", "Please enter a registration number");
-            return;
-        }
+        if (!regNo.trim()) return;
         setLoading(true);
         try {
             const data = await searchGoals(regNo);
@@ -337,19 +334,6 @@ export default function GoalsScreen() {
             </LinearGradient>
 
             <View style={styles.main}>
-                <View style={[styles.searchBox, { backgroundColor: cardBg }]}>
-                    <TextInput
-                        style={[styles.input, { color: textColor, backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor }]}
-                        placeholder="Search Registration No..."
-                        placeholderTextColor="#94a3b8"
-                        value={regNo}
-                        onChangeText={setRegNo}
-                    />
-                    <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-                        <Ionicons name="search" size={20} color="white" />
-                    </TouchableOpacity>
-                </View>
-
                 {loading ? (
                     <ActivityIndicator style={{ marginTop: 50 }} color="#15803d" size="large" />
                 ) : (
@@ -385,7 +369,7 @@ export default function GoalsScreen() {
 
                     <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
                         <View style={styles.field}>
-                            <ThemedText style={styles.label}>Clinician Comments</ThemedText>
+                            <ThemedText style={styles.label}>Parents Comments</ThemedText>
                             <TextInput
                                 style={[styles.textArea, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor, color: textColor }]}
                                 multiline
@@ -609,15 +593,12 @@ export default function GoalsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 45, borderBottomLeftRadius: 35, borderBottomRightRadius: 35 },
+    header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
     nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
     title: { fontSize: 20, fontWeight: '900', color: 'white' },
     regDisplay: { color: 'white', textAlign: 'center', marginTop: 15, fontWeight: '700', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
-    main: { flex: 1, marginTop: -25 },
-    searchBox: { marginHorizontal: 20, borderRadius: 20, padding: 10, flexDirection: 'row', elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
-    input: { flex: 1, height: 50, borderRadius: 15, paddingHorizontal: 15, borderWidth: 1, fontWeight: '700' },
-    searchBtn: { width: 50, height: 50, borderRadius: 15, backgroundColor: '#15803d', justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+    main: { flex: 1, marginTop: 10 },
     list: { padding: 20, paddingBottom: 50 },
     card: { borderRadius: 24, padding: 20, marginBottom: 18, borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },

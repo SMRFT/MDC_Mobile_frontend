@@ -97,3 +97,29 @@ export const deleteGoal = async (id: string) => {
         throw error;
     }
 };
+
+export const fetchPatientSessionAttendance = async (regNo?: string, month?: string, year?: string) => {
+    try {
+        const params: any = {};
+        if (regNo) params.reg_no = regNo;
+        if (month) params.month = month;
+        if (year) params.year = year;
+        const response = await axios.get(`${API_URL}/patient-session-attendance/`, { params });
+        return response.data;
+    } catch (error: any) {
+        console.error("Error fetching session attendance:", error);
+        return [];
+    }
+};
+
+export const confirmSessionAttendance = async (id: string, confirmedBy?: string) => {
+    try {
+        const response = await axios.post(`${API_URL}/patient-session-attendance/confirm/${id}/`, {
+            confirmed_by: confirmedBy || 'Staff'
+        });
+        return response.data;
+    } catch (error: any) {
+        console.error("Error confirming session attendance:", error);
+        throw error;
+    }
+};
