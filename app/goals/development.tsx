@@ -476,14 +476,18 @@ export default function DevelopmentalGoalsScreen() {
                                         </View>
                                     ) : null}
 
-                                    {(g.therapist_name || selectedGoal?.therapist_name || selectedGoal?.author_name || selectedGoal?.created_by_name) ? (
-                                        <View style={[styles.tagBadge, { backgroundColor: resolvedTheme === 'dark' ? '#312e81' : '#e0e7ff' }]}>
-                                            <Ionicons name="person-circle-outline" size={12} color="#4338ca" />
-                                            <ThemedText style={[styles.tagText, { color: '#4338ca', fontWeight: '800' }]}>
-                                                Therapist: {g.therapist_name || selectedGoal?.therapist_name || selectedGoal?.author_name || selectedGoal?.created_by_name}
-                                            </ThemedText>
-                                        </View>
-                                    ) : null}
+                                    {(() => {
+                                        const goalTherapist = g?.therapist_name || g?.employee_name || g?.therapist || selectedGoal?.therapist_name || selectedGoal?.author_name || selectedGoal?.created_by_name;
+                                        if (!goalTherapist) return null;
+                                        return (
+                                            <View style={[styles.tagBadge, { backgroundColor: resolvedTheme === 'dark' ? '#312e81' : '#e0e7ff' }]}>
+                                                <Ionicons name="person-circle-outline" size={13} color="#4338ca" />
+                                                <ThemedText style={[styles.tagText, { color: '#4338ca', fontWeight: '800' }]}>
+                                                    Therapist: {goalTherapist}
+                                                </ThemedText>
+                                            </View>
+                                        );
+                                    })()}
                                 </View>
 
                                 <ThemedText style={styles.detailGoalText}>{g.goal}</ThemedText>
