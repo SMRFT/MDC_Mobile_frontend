@@ -466,44 +466,6 @@ export default function DetailsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Child Quick Summary Hero Card */}
-                <View style={[styles.childHeroCard, { backgroundColor: cardColor, borderColor }]}>
-                    <View style={styles.childHeroRow}>
-                        <View style={[styles.childAvatarCircle, { backgroundColor: primaryColor + '20' }]}>
-                            <Ionicons name="happy" size={32} color={primaryColor} />
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 14 }}>
-                            <ThemedText style={styles.childHeroName} numberOfLines={1}>
-                                {registration.name_of_child}
-                            </ThemedText>
-                            <View style={styles.childMetaRow}>
-                                <View style={[styles.childMetaPill, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#f1f5f9' }]}>
-                                    <Ionicons name="hourglass-outline" size={11} color={textSecondary} style={{ marginRight: 3 }} />
-                                    <ThemedText style={[styles.childMetaPillText, { color: textSecondary }]}>
-                                        {ageString}
-                                    </ThemedText>
-                                </View>
-                                {registration.gender && (
-                                    <View style={[styles.childMetaPill, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#f1f5f9' }]}>
-                                        <Ionicons name="person-outline" size={11} color={textSecondary} style={{ marginRight: 3 }} />
-                                        <ThemedText style={[styles.childMetaPillText, { color: textSecondary }]}>
-                                            {registration.gender}
-                                        </ThemedText>
-                                    </View>
-                                )}
-                                {registration.blood_group && registration.blood_group !== 'N/A' && (
-                                    <View style={[styles.childMetaPill, { backgroundColor: resolvedTheme === 'dark' ? '#450a0a' : '#fef2f2' }]}>
-                                        <Ionicons name="water-outline" size={11} color="#ef4444" style={{ marginRight: 3 }} />
-                                        <ThemedText style={[styles.childMetaPillText, { color: '#ef4444' }]}>
-                                            {registration.blood_group}
-                                        </ThemedText>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
                 {/* Developmental Progress Journey Card */}
                 <View style={[styles.progressOverviewCard, { backgroundColor: resolvedTheme === 'dark' ? '#111827' : '#ffffff', borderColor }]}>
                     <View style={styles.progressCardHeader}>

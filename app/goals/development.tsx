@@ -372,9 +372,9 @@ export default function DevelopmentalGoalsScreen() {
                         </View>
                     )}
 
-                    {/* Goal Previews */}
+                    {/* Goal Previews - Only 1 goal displayed outside */}
                     <View style={styles.cardBody}>
-                        {displayedGoals.slice(0, 3).map((g: any, i: number) => {
+                        {displayedGoals.slice(0, 1).map((g: any, i: number) => {
                             const goalTherapist = g?.therapist_name || g?.employee_name || g?.therapist || therapistDisplay;
                             const tStyle = getTherapyStyle(getTherapyName(g) || 'General', isDark);
 
@@ -424,12 +424,12 @@ export default function DevelopmentalGoalsScreen() {
                             );
                         })}
 
-                        {displayedGoals.length > 3 && (
+                        {displayedGoals.length > 1 && (
                             <View style={styles.moreGoalsRow}>
                                 <ThemedText style={[styles.moreGoalsText, { color: primaryColor }]}>
-                                    +{displayedGoals.length - 3} more goals in this record
+                                    +{displayedGoals.length - 1} more goals (Tap to view all)
                                 </ThemedText>
-                                <Ionicons name="arrow-forward-circle-outline" size={14} color={primaryColor} />
+                                <Ionicons name="arrow-forward-circle-outline" size={15} color={primaryColor} />
                             </View>
                         )}
                     </View>

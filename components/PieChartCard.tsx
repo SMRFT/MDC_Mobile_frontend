@@ -114,8 +114,8 @@ export default function PieChartCard({
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: borderColor }]}>
             <View style={styles.headerRow}>
                 <View style={styles.headerLeft}>
-                    <View style={[styles.iconCircle, { backgroundColor: '#4338ca18' }]}>
-                        <Ionicons name="pie-chart" size={18} color="#4338ca" />
+                    <View style={[styles.iconCircle, { backgroundColor: '#05966918' }]}>
+                        <Ionicons name="pie-chart" size={18} color="#059669" />
                     </View>
                     <View>
                         <ThemedText style={styles.title}>{title}</ThemedText>
@@ -124,13 +124,13 @@ export default function PieChartCard({
                         </ThemedText>
                     </View>
                 </View>
-                <View style={[styles.totalPill, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eff6ff', borderColor: '#bfdbfe' }]}>
+                <View style={[styles.totalPill, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#eff6ff', borderColor: '#bfdbfe' }]}>
                     <ThemedText style={styles.totalPillText}>{totalGoals} Goals</ThemedText>
                 </View>
             </View>
 
-            <View style={styles.chartContent}>
-                {/* SVG Donut Chart */}
+            {/* Centered Donut Chart */}
+            <View style={styles.chartCenterContainer}>
                 <View style={styles.chartWrapper}>
                     <Svg width={chartSize} height={chartSize}>
                         <G>
@@ -160,7 +160,7 @@ export default function PieChartCard({
 
                     {/* Donut Center Display */}
                     <View style={[styles.donutCenter, { width: innerRadius * 2 - 4, height: innerRadius * 2 - 4, borderRadius: innerRadius }]}>
-                        <ThemedText style={[styles.donutCenterValue, { color: computedImprovement >= 50 ? '#15803d' : primaryColor }]}>
+                        <ThemedText style={[styles.donutCenterValue, { color: computedImprovement >= 50 ? '#10b981' : primaryColor }]}>
                             {computedImprovement}%
                         </ThemedText>
                         <ThemedText style={[styles.donutCenterLabel, { color: textSecondary }]}>
@@ -168,34 +168,34 @@ export default function PieChartCard({
                         </ThemedText>
                     </View>
                 </View>
+            </View>
 
-                {/* Legend and stats */}
-                <View style={styles.legendContainer}>
-                    {data.map((item, idx) => {
-                        const percent = nonZeroTotal > 0 ? Math.round((item.count / nonZeroTotal) * 100) : 0;
-                        const isDark = resolvedTheme === 'dark';
-                        const badgeBg = isDark ? item.darkBg : item.lightBg;
+            {/* 2x2 Grid Legend: Achieved, Developed, Emerging, Not Started */}
+            <View style={styles.gridLegendContainer}>
+                {data.map((item, idx) => {
+                    const percent = nonZeroTotal > 0 ? Math.round((item.count / nonZeroTotal) * 100) : 0;
+                    const isDark = resolvedTheme === 'dark';
+                    const badgeBg = isDark ? item.darkBg : item.lightBg;
 
-                        return (
-                            <View key={idx} style={[styles.legendItem, { backgroundColor: badgeBg }]}>
-                                <View style={styles.legendItemHeader}>
-                                    <View style={[styles.legendDot, { backgroundColor: item.color }]} />
-                                    <ThemedText style={[styles.legendLabel, { color: textColor }]} numberOfLines={1}>
-                                        {item.label}
-                                    </ThemedText>
-                                </View>
-                                <View style={styles.legendValues}>
-                                    <ThemedText style={[styles.legendCount, { color: item.color }]}>
-                                        {item.count}
-                                    </ThemedText>
-                                    <ThemedText style={[styles.legendPercent, { color: textSecondary }]}>
-                                        ({percent}%)
-                                    </ThemedText>
-                                </View>
+                    return (
+                        <View key={idx} style={[styles.gridLegendItem, { backgroundColor: badgeBg, borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+                            <View style={styles.gridLegendTop}>
+                                <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+                                <ThemedText style={[styles.gridLegendLabel, { color: textColor }]} numberOfLines={1}>
+                                    {item.label}
+                                </ThemedText>
                             </View>
-                        );
-                    })}
-                </View>
+                            <View style={styles.gridLegendBottom}>
+                                <ThemedText style={[styles.gridLegendCount, { color: item.color }]}>
+                                    {item.count}
+                                </ThemedText>
+                                <ThemedText style={[styles.gridLegendPercent, { color: item.color }]}>
+                                    ({percent}%)
+                                </ThemedText>
+                            </View>
+                        </View>
+                    );
+                })}
             </View>
         </View>
     );
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 16,
+        marginBottom: 14,
     },
     headerLeft: {
         flexDirection: 'row',
@@ -253,10 +253,10 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#2563eb',
     },
-    chartContent: {
-        flexDirection: 'row',
+    chartCenterContainer: {
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'center',
+        paddingVertical: 10,
     },
     chartWrapper: {
         position: 'relative',
@@ -269,35 +269,34 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     donutCenterValue: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: '900',
-        lineHeight: 26,
+        lineHeight: 28,
     },
     donutCenterLabel: {
-        fontSize: 9,
+        fontSize: 9.5,
         fontWeight: '800',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    legendContainer: {
-        flex: 1,
-        marginLeft: 14,
+    gridLegendContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
-        gap: 6,
+        gap: 10,
+        marginTop: 14,
     },
-    legendItem: {
+    gridLegendItem: {
+        width: '48%',
+        borderRadius: 14,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderWidth: 1,
+    },
+    gridLegendTop: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 10,
-    },
-    legendItemHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-        marginRight: 6,
+        marginBottom: 4,
     },
     legendDot: {
         width: 8,
@@ -305,21 +304,22 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         marginRight: 6,
     },
-    legendLabel: {
+    gridLegendLabel: {
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '800',
+        flex: 1,
     },
-    legendValues: {
+    gridLegendBottom: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'baseline',
+        gap: 4,
     },
-    legendCount: {
-        fontSize: 12,
+    gridLegendCount: {
+        fontSize: 15,
         fontWeight: '900',
     },
-    legendPercent: {
-        fontSize: 10,
-        fontWeight: '600',
-        marginLeft: 3,
+    gridLegendPercent: {
+        fontSize: 12,
+        fontWeight: '800',
     },
 });
