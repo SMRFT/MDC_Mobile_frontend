@@ -302,16 +302,24 @@ export default function DetailsScreen() {
         return parts.join(', ');
     })();
 
-    const handleLogout = () => {
-        const clearSavedCredentials = async () => {
-            try {
+    const clearSavedCredentials = async () => {
+        try {
+            if (Platform.OS === 'web') {
+                if (typeof window !== 'undefined' && window.localStorage) {
+                    window.localStorage.removeItem('user_credentials');
+                }
+                return;
+            }
+            if (FileSystem.documentDirectory) {
                 const credentialsFile = FileSystem.documentDirectory + 'user_credentials.json';
                 await FileSystem.deleteAsync(credentialsFile, { idempotent: true });
-            } catch (e) {
-                console.error("Failed to clear credentials file:", e);
             }
-        };
+        } catch (e) {
+            console.error("Failed to clear credentials file:", e);
+        }
+    };
 
+    const handleLogout = () => {
         if (Platform.OS === 'web') {
             if (confirm("Are you sure you want to logout?")) {
                 clearSavedCredentials().finally(() => {
@@ -346,12 +354,7 @@ export default function DetailsScreen() {
                 reg_no: registration.registration_number
             })
             .then(async () => {
-                try {
-                    const credentialsFile = FileSystem.documentDirectory + 'user_credentials.json';
-                    await FileSystem.deleteAsync(credentialsFile, { idempotent: true });
-                } catch (e) {
-                    console.error("Failed to clear credentials file:", e);
-                }
+                await clearSavedCredentials();
                 setProfileVisible(false);
                 Alert.alert("Account Deactivated", "Your account has been successfully deactivated.");
                 router.replace('/');

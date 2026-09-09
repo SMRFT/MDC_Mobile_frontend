@@ -163,8 +163,11 @@ export async function getUserNotifications(regNo: string): Promise<NotificationI
       params: { reg_no: regNo }
     });
     return filterNotifications24h(response.data);
-  } catch (error) {
-    console.error(`Error fetching notifications for ${regNo}:`, error);
+  } catch (error: any) {
+    const status = error?.response?.status;
+    if (status !== 502 && status !== 503) {
+      console.warn(`Notifications unavailable for ${regNo}:`, error?.message || error);
+    }
     try {
       const responseFallback = await axios.get(`${API_BASE}/notifications/user/${encodeURIComponent(regNo)}`);
       return filterNotifications24h(responseFallback.data);

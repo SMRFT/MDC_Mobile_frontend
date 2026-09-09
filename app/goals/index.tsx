@@ -3,7 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {
     View, StyleSheet, ScrollView, TouchableOpacity, Modal,
     TextInput, ActivityIndicator, Alert, FlatList, Dimensions, Image,
-    PanResponder
+    PanResponder, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -153,8 +153,10 @@ export default function GoalsScreen() {
             setLocalVideoUri(null);
             setBufferingPercentage(0);
 
-            if (!remoteUrl.startsWith('http')) {
+            if (Platform.OS === 'web' || !remoteUrl.startsWith('http')) {
                 setLocalVideoUri(remoteUrl);
+                setDownloading(false);
+                setVideoLoading(false);
                 return;
             }
 

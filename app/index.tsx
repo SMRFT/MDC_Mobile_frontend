@@ -38,49 +38,89 @@ export default function LoginScreen() {
   const [showCpConfirmPass, setShowCpConfirmPass] = useState(false);
   
   const [autoLoggingIn, setAutoLoggingIn] = useState(false);
-  const CREDENTIALS_FILE = FileSystem.documentDirectory + 'user_credentials.json';
+  const CREDENTIALS_FILE = FileSystem.documentDirectory ? (FileSystem.documentDirectory + 'user_credentials.json') : '';
+
+  const getSavedCredentials = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const item = window.localStorage.getItem('user_credentials');
+          return item ? JSON.parse(item) : null;
+        }
+      } catch (e) {
+        return null;
+      }
+      return null;
+    }
+    try {
+      if (!CREDENTIALS_FILE) return null;
+      const fileInfo = await FileSystem.getInfoAsync(CREDENTIALS_FILE);
+      if (fileInfo.exists) {
+        const content = await FileSystem.readAsStringAsync(CREDENTIALS_FILE);
+        return JSON.parse(content);
+      }
+    } catch (e) {
+      return null;
+    }
+    return null;
+  };
+
+  const saveCredentials = async (data: any) => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('user_credentials', JSON.stringify(data));
+        }
+      } catch (e) {
+        console.error("Error saving credentials on web:", e);
+      }
+      return;
+    }
+    try {
+      if (!CREDENTIALS_FILE) return;
+      await FileSystem.writeAsStringAsync(CREDENTIALS_FILE, JSON.stringify(data));
+    } catch (e) {
+      console.error("Error saving credentials:", e);
+    }
+  };
 
   useEffect(() => {
     const checkSavedCredentials = async () => {
       try {
-        const fileInfo = await FileSystem.getInfoAsync(CREDENTIALS_FILE);
-        if (fileInfo.exists) {
+        const parsed = await getSavedCredentials();
+        if (parsed && parsed.phone && parsed.password) {
           setAutoLoggingIn(true);
-          const content = await FileSystem.readAsStringAsync(CREDENTIALS_FILE);
-          const parsed = JSON.parse(content);
-          if (parsed && parsed.phone && parsed.password) {
-            const response = await axios.get(`${Config.API_BASE_URL}/search-phone/`, {
-              params: { phone: parsed.phone, password: parsed.password }
+          const response = await axios.get(`${Config.API_BASE_URL}/search-phone/`, {
+            params: { phone: parsed.phone, password: parsed.password }
+          });
+          
+          if (response.data.length === 1) {
+            const regNo = response.data[0].registration_number;
+            const detailsResponse = await axios.get(`${Config.API_BASE_URL}/search/`, {
+              params: { reg_no: regNo }
             });
-            
-            if (response.data.length === 1) {
-              const regNo = response.data[0].registration_number;
-              const detailsResponse = await axios.get(`${Config.API_BASE_URL}/search/`, {
-                params: { reg_no: regNo }
-              });
-              router.replace({
-                pathname: '/details',
-                params: { data: JSON.stringify(detailsResponse.data) }
-              });
-            } else if (response.data.length > 1) {
-              if (parsed.selectedRegNo) {
-                const matched = response.data.find((p: any) => p.registration_number === parsed.selectedRegNo);
-                if (matched) {
-                  const detailsResponse = await axios.get(`${Config.API_BASE_URL}/search/`, {
-                    params: { reg_no: parsed.selectedRegNo }
-                  });
-                  router.replace({
-                    pathname: '/details',
-                    params: { data: JSON.stringify(detailsResponse.data) }
-                  });
-                  return;
-                }
+            router.replace({
+              pathname: '/details',
+              params: { data: JSON.stringify(detailsResponse.data) }
+            });
+          } else if (response.data.length > 1) {
+            if (parsed.selectedRegNo) {
+              const matched = response.data.find((p: any) => p.registration_number === parsed.selectedRegNo);
+              if (matched) {
+                const detailsResponse = await axios.get(`${Config.API_BASE_URL}/search/`, {
+                  params: { reg_no: parsed.selectedRegNo }
+                });
+                router.replace({
+                  pathname: '/details',
+                  params: { data: JSON.stringify(detailsResponse.data) }
+                });
+                return;
               }
-              setPhone(parsed.phone);
-              setPassword(parsed.password);
-              setProfiles(response.data);
-              setModalVisible(true);
             }
+            setPhone(parsed.phone);
+            setPassword(parsed.password);
+            setProfiles(response.data);
+            setModalVisible(true);
           }
         }
       } catch (err) {
@@ -113,15 +153,11 @@ export default function LoginScreen() {
 
       if (response.data.length === 1) {
         const regNo = response.data[0].registration_number;
-        try {
-          await FileSystem.writeAsStringAsync(CREDENTIALS_FILE, JSON.stringify({
-            phone: phone,
-            password: password,
-            selectedRegNo: regNo
-          }));
-        } catch (e) {
-          console.error("Error saving credentials:", e);
-        }
+        await saveCredentials({
+          phone: phone,
+          password: password,
+          selectedRegNo: regNo
+        });
         handleProfileSelect(regNo);
       } else {
         setProfiles(response.data);
@@ -140,15 +176,11 @@ export default function LoginScreen() {
     setModalVisible(false);
     setLoading(true);
     try {
-      try {
-        await FileSystem.writeAsStringAsync(CREDENTIALS_FILE, JSON.stringify({
-          phone: phone,
-          password: password,
-          selectedRegNo: regNo
-        }));
-      } catch (e) {
-        console.error("Error saving credentials:", e);
-      }
+      await saveCredentials({
+        phone: phone,
+        password: password,
+        selectedRegNo: regNo
+      });
 
       const response = await axios.get(`${Config.API_BASE_URL}/search/`, {
         params: { reg_no: regNo }
