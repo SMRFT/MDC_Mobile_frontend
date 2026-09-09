@@ -383,151 +383,174 @@ export default function GoalsScreen() {
             ? groupedGoals
             : { [selectedTherapy]: groupedGoals[selectedTherapy] || [] };
 
+        // Count total activities
+        const totalActivities = Object.values(displayedGroups).reduce((acc, curr) => acc + (curr?.length || 0), 0);
+
         return (
             <TouchableOpacity 
-                style={[styles.card, { backgroundColor: cardBg, borderColor: borderColor }]} 
+                style={[
+                    styles.card, 
+                    { 
+                        backgroundColor: cardBg, 
+                        borderColor: resolvedTheme === 'dark' ? 'rgba(52, 211, 153, 0.2)' : borderColor 
+                    }
+                ]} 
                 onPress={() => handleSelectGoal(item)}
-                activeOpacity={0.85}
+                activeOpacity={0.88}
             >
-                <View style={styles.cardHeader}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1, marginRight: 8 }}>
-                        <View style={[styles.dateBadge, { backgroundColor: resolvedTheme === 'dark' ? '#14532d' : '#f0fdf4', borderColor: '#86efac' }]}>
-                            <Ionicons name="calendar-outline" size={14} color="#15803d" />
-                            <ThemedText style={styles.dateText}>{formatDate(item.date)}</ThemedText>
+                {/* Glowing Left Accent */}
+                <LinearGradient
+                    colors={['#059669', '#10b981', '#0284c7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.cardAccentBar}
+                />
+
+                <View style={styles.cardInner}>
+                    <View style={styles.cardHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', flex: 1, marginRight: 8 }}>
+                            <View style={[styles.dateBadge, { backgroundColor: resolvedTheme === 'dark' ? '#064e3b' : '#f0fdf4', borderColor: resolvedTheme === 'dark' ? '#047857' : '#bbf7d0' }]}>
+                                <Ionicons name="calendar" size={13} color="#059669" />
+                                <ThemedText style={styles.dateText}>{formatDate(item.date)}</ThemedText>
+                            </View>
+
+                            {authorDisplay ? (
+                                <View style={[styles.authorBadgePill, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eef2ff', borderColor: resolvedTheme === 'dark' ? '#312e81' : '#c7d2fe' }]}>
+                                    <Ionicons name="person-circle" size={14} color="#4f46e5" style={{ marginRight: 4 }} />
+                                    <ThemedText style={styles.authorBadgePillText} numberOfLines={1}>
+                                        {authorDisplay}
+                                    </ThemedText>
+                                </View>
+                            ) : null}
                         </View>
 
-                        {authorDisplay ? (
-                            <View style={[styles.authorBadgePill, { backgroundColor: resolvedTheme === 'dark' ? '#14532d' : '#f0fdf4', borderColor: '#86efac' }]}>
-                                <Ionicons name="person-circle-outline" size={13} color="#15803d" style={{ marginRight: 4 }} />
-                                <ThemedText style={styles.authorBadgePillText} numberOfLines={1}>
-                                    Therapist: {authorDisplay}
-                                </ThemedText>
+                        {item.deadline ? (
+                            <View style={[styles.deadlineBadge, { backgroundColor: resolvedTheme === 'dark' ? '#451a03' : '#fff7ed', borderColor: '#fdba74' }]}>
+                                <Ionicons name="time" size={12} color="#ea580c" style={{ marginRight: 4 }} />
+                                <ThemedText style={styles.deadlineText}>Review: {formatDate(item.deadline)}</ThemedText>
                             </View>
                         ) : null}
                     </View>
 
-                    {item.deadline ? (
-                        <View style={[styles.deadlineBadge, { backgroundColor: resolvedTheme === 'dark' ? '#451a03' : '#fff7ed', borderColor: '#fdba74' }]}>
-                            <Ionicons name="time-outline" size={12} color="#ea580c" style={{ marginRight: 4 }} />
-                            <ThemedText style={styles.deadlineText}>Review: {formatDate(item.deadline)}</ThemedText>
+                    {/* Therapy Badges summary row */}
+                    {therapyKeys.length > 0 && (
+                        <View style={styles.therapyBadgesRow}>
+                            {therapyKeys.map((tKey) => {
+                                const tInfo = getTherapyInfo(tKey);
+                                return (
+                                    <View
+                                        key={tKey}
+                                        style={[
+                                            styles.therapyBadgePill,
+                                            { backgroundColor: resolvedTheme === 'dark' ? tInfo.darkBg : tInfo.bg, borderColor: tInfo.color + '40' }
+                                        ]}
+                                    >
+                                        <Ionicons name={tInfo.icon} size={11} color={tInfo.color} style={{ marginRight: 4 }} />
+                                        <ThemedText style={[styles.therapyBadgePillText, { color: tInfo.color }]}>
+                                            {tInfo.name}
+                                        </ThemedText>
+                                    </View>
+                                );
+                            })}
                         </View>
-                    ) : null}
-                </View>
+                    )}
 
-                {/* Therapy Badges summary row */}
-                {therapyKeys.length > 0 && (
-                    <View style={styles.therapyBadgesRow}>
-                        {therapyKeys.map((tKey) => {
-                            const tInfo = getTherapyInfo(tKey);
+                    {/* Grouped Activities List */}
+                    <View style={styles.cardBody}>
+                        {Object.entries(displayedGroups).map(([therapyName, activities]) => {
+                            if (!activities || activities.length === 0) return null;
+                            const tInfo = getTherapyInfo(therapyName);
+
                             return (
-                                <View
-                                    key={tKey}
-                                    style={[
-                                        styles.therapyBadgePill,
-                                        { backgroundColor: resolvedTheme === 'dark' ? tInfo.darkBg : tInfo.bg, borderColor: tInfo.color + '40' }
-                                    ]}
-                                >
-                                    <Ionicons name={tInfo.icon} size={12} color={tInfo.color} style={{ marginRight: 4 }} />
-                                    <ThemedText style={[styles.therapyBadgePillText, { color: tInfo.color }]}>
-                                        {tInfo.name}
-                                    </ThemedText>
+                                <View key={therapyName} style={[styles.therapyGroupSection, { borderBottomColor: resolvedTheme === 'dark' ? '#1e293b' : '#f1f5f9' }]}>
+                                    <View style={styles.therapyGroupHeader}>
+                                        <View style={[styles.therapyGroupIconBox, { backgroundColor: tInfo.color + '20' }]}>
+                                            <Ionicons name={tInfo.icon} size={13} color={tInfo.color} />
+                                        </View>
+                                        <ThemedText style={[styles.therapyGroupTitle, { color: tInfo.color }]}>
+                                            {tInfo.name}
+                                        </ThemedText>
+                                        <View style={[styles.countBadge, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#f1f5f9', borderColor }]}>
+                                            <ThemedText style={[styles.countBadgeText, { color: textSecondary }]}>
+                                                {activities.length}
+                                            </ThemedText>
+                                        </View>
+                                    </View>
+
+                                    {activities.slice(0, 3).map((g: any, i: number) => {
+                                        const taskText = typeof g === 'string' ? g : (g.task || g.goal || g.description || '');
+                                        const domainName = g?.domain_name || g?.domain;
+                                        const goalTherapist = g?.therapist_name || g?.therapist || item.therapist_name || authorDisplay;
+
+                                        return (
+                                            <View key={i} style={styles.activityItemRow}>
+                                                <View style={[styles.stepCircleSmall, { backgroundColor: tInfo.color + '18', borderColor: tInfo.color + '40' }]}>
+                                                    <ThemedText style={[styles.stepCircleSmallText, { color: tInfo.color }]}>{i + 1}</ThemedText>
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <ThemedText style={styles.activityText} numberOfLines={2}>
+                                                        {taskText}
+                                                    </ThemedText>
+                                                    <View style={styles.activityMetaRow}>
+                                                        {domainName ? (
+                                                            <View style={[styles.miniMetaBadge, { backgroundColor: resolvedTheme === 'dark' ? '#78350f33' : '#fef3c7' }]}>
+                                                                <ThemedText style={[styles.domainTagText, { color: '#d97706' }]}>
+                                                                    Domain: {domainName}
+                                                                </ThemedText>
+                                                            </View>
+                                                        ) : null}
+                                                        {goalTherapist ? (
+                                                            <View style={[styles.therapistTag, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eef2ff', borderColor: resolvedTheme === 'dark' ? '#312e81' : '#c7d2fe' }]}>
+                                                                <Ionicons name="person-circle-outline" size={12} color="#4f46e5" style={{ marginRight: 3 }} />
+                                                                <ThemedText style={styles.therapistTagText} numberOfLines={1}>
+                                                                    {goalTherapist}
+                                                                </ThemedText>
+                                                            </View>
+                                                        ) : null}
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+
+                                    {activities.length > 3 && (
+                                        <ThemedText style={[styles.moreActivitiesText, { color: tInfo.color }]}>
+                                            +{activities.length - 3} more activities...
+                                        </ThemedText>
+                                    )}
                                 </View>
                             );
                         })}
                     </View>
-                )}
 
-                {/* Grouped Activities List */}
-                <View style={styles.cardBody}>
-                    {Object.entries(displayedGroups).map(([therapyName, activities]) => {
-                        if (!activities || activities.length === 0) return null;
-                        const tInfo = getTherapyInfo(therapyName);
+                    {item.comments ? (
+                        <View style={[styles.commentBox, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#f8fafc', borderColor }]}>
+                            <Ionicons name="chatbox-ellipses" size={14} color="#059669" style={{ marginRight: 6 }} />
+                            <ThemedText style={[styles.commentText, { color: textColor }]} numberOfLines={2}>
+                                {"\""}{item.comments}{"\""}
+                            </ThemedText>
+                        </View>
+                    ) : null}
 
-                        return (
-                            <View key={therapyName} style={styles.therapyGroupSection}>
-                                <View style={styles.therapyGroupHeader}>
-                                    <View style={[styles.therapyGroupIconBox, { backgroundColor: tInfo.color + '15' }]}>
-                                        <Ionicons name={tInfo.icon} size={14} color={tInfo.color} />
-                                    </View>
-                                    <ThemedText style={[styles.therapyGroupTitle, { color: tInfo.color }]}>
-                                        {tInfo.name}
-                                    </ThemedText>
-                                    <View style={[styles.countBadge, { backgroundColor: cardBg, borderColor }]}>
-                                        <ThemedText style={[styles.countBadgeText, { color: textSecondary }]}>
-                                            {activities.length}
-                                        </ThemedText>
-                                    </View>
+                    <View style={styles.cardFooter}>
+                        <View style={styles.mediaIndicators}>
+                            {item.goalsphoto?.length > 0 && (
+                                <View style={[styles.mIndicator, { backgroundColor: resolvedTheme === 'dark' ? '#064e3b33' : '#dcfce7' }]}>
+                                    <Ionicons name="image" size={12} color="#059669" />
+                                    <ThemedText style={[styles.mCount, { color: '#059669' }]}>{item.goalsphoto.length} Photos</ThemedText>
                                 </View>
-
-                                {activities.slice(0, 3).map((g: any, i: number) => {
-                                    const taskText = typeof g === 'string' ? g : (g.task || g.goal || g.description || '');
-                                    const domainName = g?.domain_name || g?.domain;
-                                    const goalTherapist = g?.therapist_name || g?.therapist || item.therapist_name || authorDisplay;
-
-                                    return (
-                                        <View key={i} style={styles.activityItemRow}>
-                                            <View style={[styles.dot, { backgroundColor: tInfo.color }]} />
-                                            <View style={{ flex: 1 }}>
-                                                <ThemedText style={styles.activityText} numberOfLines={2}>
-                                                    {taskText}
-                                                </ThemedText>
-                                                <View style={styles.activityMetaRow}>
-                                                    {domainName ? (
-                                                        <ThemedText style={[styles.domainTagText, { color: textSecondary }]}>
-                                                            Domain: {domainName}
-                                                        </ThemedText>
-                                                    ) : null}
-                                                    {goalTherapist ? (
-                                                        <View style={[styles.therapistTag, { backgroundColor: resolvedTheme === 'dark' ? '#14532d25' : '#f0fdf4', borderColor: '#86efac' }]}>
-                                                            <Ionicons name="person-outline" size={11} color="#15803d" style={{ marginRight: 3 }} />
-                                                            <ThemedText style={styles.therapistTagText} numberOfLines={1}>
-                                                                Therapist: {goalTherapist}
-                                                            </ThemedText>
-                                                        </View>
-                                                    ) : null}
-                                                </View>
-                                            </View>
-                                        </View>
-                                    );
-                                })}
-
-                                {activities.length > 3 && (
-                                    <ThemedText style={[styles.moreActivitiesText, { color: tInfo.color }]}>
-                                        +{activities.length - 3} more activities...
-                                    </ThemedText>
-                                )}
-                            </View>
-                        );
-                    })}
-                </View>
-
-                {item.comments ? (
-                    <View style={[styles.commentBox, { borderTopColor: borderColor }]}>
-                        <Ionicons name="chatbox-ellipses-outline" size={13} color={textSecondary} style={{ marginRight: 6 }} />
-                        <ThemedText style={[styles.commentText, { color: textSecondary }]} numberOfLines={2}>
-                            {"\""}{item.comments}{"\""}
-                        </ThemedText>
-                    </View>
-                ) : null}
-
-                <View style={styles.cardFooter}>
-                    <View style={styles.mediaIndicators}>
-                        {item.goalsphoto?.length > 0 && (
-                            <View style={styles.mIndicator}>
-                                <Ionicons name="image" size={14} color="#15803d" />
-                                <ThemedText style={styles.mCount}>{item.goalsphoto.length}</ThemedText>
-                            </View>
-                        )}
-                        {item.goalsvideo?.length > 0 && (
-                            <View style={styles.mIndicator}>
-                                <Ionicons name="videocam" size={14} color="#2563eb" />
-                                <ThemedText style={styles.mCount}>{item.goalsvideo.length}</ThemedText>
-                            </View>
-                        )}
-                    </View>
-                    <View style={styles.detailsBtnContainer}>
-                        <ThemedText style={[styles.detailsBtnText, { color: primaryColor }]}>View Details</ThemedText>
-                        <Ionicons name="chevron-forward" size={16} color={primaryColor} />
+                            )}
+                            {item.goalsvideo?.length > 0 && (
+                                <View style={[styles.mIndicator, { backgroundColor: resolvedTheme === 'dark' ? '#082f4933' : '#e0f2fe' }]}>
+                                    <Ionicons name="videocam" size={12} color="#0284c7" />
+                                    <ThemedText style={[styles.mCount, { color: '#0284c7' }]}>{item.goalsvideo.length} Videos</ThemedText>
+                                </View>
+                            )}
+                        </View>
+                        <View style={styles.detailsBtnContainer}>
+                            <ThemedText style={[styles.detailsBtnText, { color: primaryColor }]}>View & Update</ThemedText>
+                            <Ionicons name="chevron-forward" size={15} color={primaryColor} />
+                        </View>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -537,29 +560,45 @@ export default function GoalsScreen() {
     return (
         <ThemedView style={styles.container}>
             <LinearGradient 
-                colors={resolvedTheme === 'dark' ? ['#0f172a', '#1e293b'] : ['#15803d', '#10b981']} 
+                colors={resolvedTheme === 'dark' ? ['#0f172a', '#134e4a', '#064e3b'] : ['#059669', '#10b981', '#047857']} 
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.header}
             >
                 <View style={styles.nav}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Ionicons name="chevron-back" size={26} color="white" />
+                        <Ionicons name="chevron-back" size={24} color="white" />
                     </TouchableOpacity>
-                    <ThemedText style={styles.title}>Developmental Activity</ThemedText>
-                    <View style={{ width: 44 }} />
+                    <View style={{ alignItems: 'center' }}>
+                        <ThemedText style={styles.title}>Developmental Activity</ThemedText>
+                        <ThemedText style={styles.subTitle}>Daily Sessions & Media Evidence</ThemedText>
+                    </View>
+                    <TouchableOpacity onPress={handleSearch} style={styles.refreshBtn}>
+                        <Ionicons name="refresh-outline" size={20} color="white" />
+                    </TouchableOpacity>
                 </View>
-                <ThemedText style={styles.regDisplay}>{regNo}</ThemedText>
+                
+                {/* Registration & Session Stats Badge */}
+                <View style={styles.headerStatsRow}>
+                    {regNo ? (
+                        <View style={styles.regBadge}>
+                            <Ionicons name="medical" size={12} color="#a7f3d0" />
+                            <ThemedText style={styles.regDisplay}>{regNo}</ThemedText>
+                        </View>
+                    ) : null}
+                    <View style={styles.statCountBadge}>
+                        <Ionicons name="list" size={12} color="#fef08a" />
+                        <ThemedText style={styles.statCountText}>
+                            {goalsList.length} {goalsList.length === 1 ? 'Session' : 'Sessions'} Logged
+                        </ThemedText>
+                    </View>
+                </View>
             </LinearGradient>
 
             <View style={styles.main}>
                 {/* Therapy Category Horizontal Filter Bar */}
                 {availableTherapies.length > 1 && (
                     <View style={styles.filterSection}>
-                        <View style={styles.filterHeader}>
-                            <Ionicons name="filter" size={15} color={textSecondary} />
-                            <ThemedText style={[styles.filterTitle, { color: textSecondary }]}>
-                                Filter by Therapy Type
-                            </ThemedText>
-                        </View>
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
@@ -575,12 +614,19 @@ export default function GoalsScreen() {
                                         onPress={() => setSelectedTherapy(tKey)}
                                         style={[
                                             styles.therapyFilterBtn,
-                                            { backgroundColor: isSelected ? '#15803d' : cardBg, borderColor: isSelected ? '#15803d' : borderColor }
+                                            { 
+                                                backgroundColor: isSelected 
+                                                    ? (resolvedTheme === 'dark' ? '#059669' : '#047857') 
+                                                    : (resolvedTheme === 'dark' ? '#1e293b' : cardBg), 
+                                                borderColor: isSelected 
+                                                    ? '#10b981' 
+                                                    : borderColor 
+                                            }
                                         ]}
                                     >
                                         <Ionicons
                                             name={tKey === 'All' ? 'grid-outline' : tInfo.icon}
-                                            size={14}
+                                            size={13}
                                             color={isSelected ? 'white' : tInfo.color}
                                             style={{ marginRight: 6 }}
                                         />
@@ -927,58 +973,148 @@ export default function GoalsScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    header: { 
+        paddingTop: Platform.OS === 'ios' ? 60 : 45, 
+        paddingHorizontal: 20, 
+        paddingBottom: 22, 
+        borderBottomLeftRadius: 32, 
+        borderBottomRightRadius: 32,
+        elevation: 8,
+        shadowColor: '#059669',
+        shadowOpacity: 0.25,
+        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 6 }
+    },
     nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    backBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 20, fontWeight: '900', color: 'white' },
-    regDisplay: { color: 'white', textAlign: 'center', marginTop: 15, fontWeight: '700', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
-    main: { flex: 1, marginTop: 10 },
-    filterSection: { paddingHorizontal: 20, marginBottom: 12 },
-    filterHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    filterTitle: { fontSize: 11, fontWeight: '900', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
-    therapyFilterScroll: { paddingRight: 10 },
-    therapyFilterBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14, marginRight: 8, borderWidth: 1 },
-    therapyFilterText: { fontSize: 13 },
-    list: { padding: 20, paddingBottom: 50 },
-    card: { borderRadius: 24, padding: 20, marginBottom: 18, borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
+    backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    refreshBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    title: { fontSize: 20, fontWeight: '900', color: 'white', letterSpacing: 0.3 },
+    subTitle: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+    headerStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 14,
+        gap: 10,
+        flexWrap: 'wrap'
+    },
+    regBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 14,
+        gap: 6
+    },
+    regDisplay: { color: 'white', fontWeight: '800', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+    statCountBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 14,
+        gap: 6
+    },
+    statCountText: { color: 'white', fontWeight: '700', fontSize: 12 },
+    main: { flex: 1, marginTop: 12 },
+    filterSection: { marginBottom: 12 },
+    therapyFilterScroll: { paddingHorizontal: 20, gap: 8 },
+    therapyFilterBtn: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        paddingHorizontal: 14, 
+        paddingVertical: 8, 
+        borderRadius: 16, 
+        borderWidth: 1 
+    },
+    therapyFilterText: { fontSize: 12.5 },
+    list: { paddingBottom: 60 },
+    card: { 
+        borderRadius: 24, 
+        marginHorizontal: 20, 
+        marginBottom: 16, 
+        elevation: 3, 
+        shadowColor: '#000', 
+        shadowOpacity: 0.05, 
+        shadowRadius: 10, 
+        shadowOffset: { width: 0, height: 4 },
+        borderWidth: 1,
+        position: 'relative',
+        overflow: 'hidden'
+    },
+    cardAccentBar: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: 6,
+    },
+    cardInner: {
+        padding: 18,
+        paddingLeft: 22
+    },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    dateBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
-    dateText: { fontSize: 12, fontWeight: '800', marginLeft: 6, color: '#15803d' },
-    authorBadgePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10, borderWidth: 1, maxWidth: '65%' },
-    authorBadgePillText: { fontSize: 11, fontWeight: '800', color: '#15803d' },
-    modalMetaRow: { marginTop: 6, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+    dateBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, gap: 6 },
+    dateText: { fontSize: 12, fontWeight: '800', color: '#059669' },
+    authorBadgePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, maxWidth: '65%' },
+    authorBadgePillText: { fontSize: 11.5, fontWeight: '800', color: '#4f46e5' },
+    modalMetaRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
     modalDateBadge: { flexDirection: 'row', alignItems: 'center' },
-    deadlineBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
-    deadlineText: { fontSize: 11, fontWeight: '800', color: '#c2410c' },
+    deadlineBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, gap: 4 },
+    deadlineText: { fontSize: 11, fontWeight: '800', color: '#ea580c' },
     therapyBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12, gap: 6 },
     therapyBadgePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1 },
     therapyBadgePillText: { fontSize: 11, fontWeight: '800' },
-    cardBody: { marginBottom: 15 },
-    therapyGroupSection: { marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.04)' },
-    therapyGroupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    therapyGroupIconBox: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-    therapyGroupTitle: { fontSize: 13, fontWeight: '900', flex: 1 },
+    cardBody: { marginBottom: 10 },
+    therapyGroupSection: { marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1 },
+    therapyGroupHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+    therapyGroupIconBox: { width: 28, height: 28, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+    therapyGroupTitle: { fontSize: 13.5, fontWeight: '900', flex: 1 },
     countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
     countBadgeText: { fontSize: 11, fontWeight: '800' },
-    activityItemRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, paddingLeft: 6 },
+    activityItemRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8, paddingLeft: 4 },
+    stepCircleSmall: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+        marginTop: 2
+    },
+    stepCircleSmallText: {
+        fontSize: 10.5,
+        fontWeight: '900'
+    },
     dot: { width: 6, height: 6, borderRadius: 3, marginRight: 10, marginTop: 6 },
-    activityText: { fontSize: 14, fontWeight: '700', lineHeight: 20 },
+    activityText: { fontSize: 13.5, fontWeight: '700', lineHeight: 19 },
     activityMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-    therapistTag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
-    therapistTagText: { fontSize: 10, fontWeight: '700', color: '#15803d' },
-    domainTagText: { fontSize: 11, fontWeight: '600' },
-    moreActivitiesText: { fontSize: 11, fontWeight: '800', marginLeft: 16, marginTop: 4 },
+    miniMetaBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+    therapistTag: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
+    therapistTagText: { fontSize: 10.5, fontWeight: '700', color: '#4f46e5' },
+    domainTagText: { fontSize: 10.5, fontWeight: '700' },
+    moreActivitiesText: { fontSize: 11, fontWeight: '800', marginLeft: 30, marginTop: 4 },
     modalGoalMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 },
     modalTherapistPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1 },
-    modalTherapistPillText: { fontSize: 11, fontWeight: '800', color: '#15803d' },
-    commentBox: { flexDirection: 'row', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, marginBottom: 12 },
-    commentText: { fontSize: 13, fontStyle: 'italic', fontWeight: '500', flex: 1 },
-    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    mediaIndicators: { flexDirection: 'row' },
-    mIndicator: { flexDirection: 'row', alignItems: 'center', marginRight: 15 },
-    mCount: { fontSize: 12, fontWeight: '800', marginLeft: 5 },
-    detailsBtnContainer: { flexDirection: 'row', alignItems: 'center' },
-    detailsBtnText: { fontSize: 13, fontWeight: '800', marginRight: 4 },
+    modalTherapistPillText: { fontSize: 11, fontWeight: '800', color: '#059669' },
+    commentBox: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        padding: 12, 
+        borderRadius: 14, 
+        borderWidth: 1, 
+        marginBottom: 12 
+    },
+    commentText: { fontSize: 12.5, fontStyle: 'italic', fontWeight: '500', flex: 1, lineHeight: 18 },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 },
+    mediaIndicators: { flexDirection: 'row', gap: 8 },
+    mIndicator: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
+    mCount: { fontSize: 11, fontWeight: '800' },
+    detailsBtnContainer: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+    detailsBtnText: { fontSize: 12.5, fontWeight: '800' },
     empty: { alignItems: 'center', marginTop: 80 },
     emptyTitle: { fontSize: 18, fontWeight: '900', marginTop: 15 },
     emptySub: { fontSize: 14, textAlign: 'center', marginTop: 5, paddingHorizontal: 40 },
@@ -988,21 +1124,21 @@ const styles = StyleSheet.create({
     closeBtn: { padding: 5 },
     modalScroll: { padding: 20 },
     field: { marginBottom: 25 },
-    label: { fontSize: 13, fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10, letterSpacing: 0.5 },
+    label: { fontSize: 12, fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10, letterSpacing: 0.5 },
     modalTherapyCard: { borderRadius: 18, padding: 14, marginBottom: 12, borderWidth: 1 },
     modalTherapyHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
     modalTherapyTitle: { fontSize: 14, fontWeight: '900', flex: 1 },
-    textArea: { height: 120, borderRadius: 18, borderWidth: 1, padding: 15, fontSize: 16, textAlignVertical: 'top', fontWeight: '600' },
+    textArea: { height: 120, borderRadius: 18, borderWidth: 1, padding: 15, fontSize: 15, textAlignVertical: 'top', fontWeight: '600' },
     readOnlyBox: { padding: 15, borderRadius: 18 },
-    readOnlyText: { fontSize: 15, fontWeight: '600', lineHeight: 22 },
+    readOnlyText: { fontSize: 14.5, fontWeight: '600', lineHeight: 22 },
     goalItem: { flexDirection: 'row', padding: 12, borderRadius: 12, marginBottom: 8, borderWidth: 1 },
     goalText: { flex: 1, fontSize: 14, fontWeight: '700', lineHeight: 20 },
     mediaScroll: { flexDirection: 'row' },
     mediaThumb: { width: 100, height: 100, borderRadius: 18, marginRight: 12, overflow: 'hidden', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
     videoPlayOverlay: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-    addMediaBtn: { width: 100, height: 100, borderRadius: 18, borderStyle: 'dashed', borderWidth: 2, borderColor: '#15803d', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-    addMediaTxt: { fontSize: 10, fontWeight: '800', color: '#15803d', marginTop: 5 },
-    newTag: { position: 'absolute', top: 8, right: 8, backgroundColor: '#15803d', color: 'white', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontSize: 8, fontWeight: '900', zIndex: 10 },
+    addMediaBtn: { width: 100, height: 100, borderRadius: 18, borderStyle: 'dashed', borderWidth: 2, borderColor: '#059669', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+    addMediaTxt: { fontSize: 10, fontWeight: '800', color: '#059669', marginTop: 5 },
+    newTag: { position: 'absolute', top: 8, right: 8, backgroundColor: '#059669', color: 'white', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontSize: 8, fontWeight: '900', zIndex: 10 },
     modalFooter: { padding: 20 },
     saveBtn: { borderRadius: 18, overflow: 'hidden' },
     saveGrad: { paddingVertical: 18, alignItems: 'center' },

@@ -44,10 +44,36 @@ const styles = StyleSheet.create({
     infoIcon: { marginRight: 12 },
     infoLabel: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
     infoValue: { fontSize: 15, fontWeight: '700', marginTop: 2 },
-    buttonStack: { marginTop: 5 },
-    dashboardBtn: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 22, marginBottom: 15, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 12 },
-    btnIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-    btnText: { flex: 1, color: 'white', fontSize: 17, fontWeight: '900' },
+    childHeroCard: { borderRadius: 24, padding: 18, marginBottom: 16, borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10 },
+    childHeroRow: { flexDirection: 'row', alignItems: 'center' },
+    childAvatarCircle: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
+    childHeroName: { fontSize: 20, fontWeight: '900', letterSpacing: -0.3 },
+    childMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+    childMetaPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    childMetaPillText: { fontSize: 11, fontWeight: '800' },
+    progressOverviewCard: { borderRadius: 24, padding: 18, marginBottom: 20, borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10 },
+    progressCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+    progressTitle: { fontSize: 16, fontWeight: '900' },
+    progressSubtitle: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+    liveStatusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+    pulseDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
+    liveStatusText: { fontSize: 10, fontWeight: '900', color: '#10b981', letterSpacing: 0.5 },
+    therapyMiniGrid: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    therapyMiniItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 12, borderWidth: 1, gap: 4 },
+    therapyMiniText: { fontSize: 11, fontWeight: '800' },
+    sectionHeading: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, marginLeft: 4 },
+    actionGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12, marginBottom: 10 },
+    gridCard: { width: (width - 44 - 12) / 2, borderRadius: 22, padding: 16, borderWidth: 1, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 8 },
+    gridIconCircle: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+    gridCardTitle: { fontSize: 15, fontWeight: '900', lineHeight: 19, marginBottom: 4 },
+    gridCardSub: { fontSize: 11, fontWeight: '600', lineHeight: 15, marginBottom: 10 },
+    gridCardFooter: { marginTop: 'auto', paddingTop: 4 },
+    gridActionLink: { fontSize: 12, fontWeight: '900' },
+    secondaryRow: { gap: 10, marginBottom: 10 },
+    secondaryCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 18, borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 5 },
+    secIconBox: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    secCardTitle: { fontSize: 14, fontWeight: '800' },
+    secCardSub: { fontSize: 11, fontWeight: '600', marginTop: 2 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-start', alignItems: 'flex-end', paddingRight: 20, paddingTop: 110 },
     dropdown: { width: 160, borderRadius: 18, borderWidth: 1, overflow: 'hidden', elevation: 20 },
     dropdownItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)' },
@@ -440,12 +466,230 @@ export default function DetailsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Simplified Personal Info Display */}
-                <View style={[styles.section, { backgroundColor: cardColor }]}>
-                    <View style={styles.personalHeader}>
-                        <Ionicons name="people-outline" size={22} color={primaryColor} />
-                        <ThemedText type="subtitle" style={styles.personalTitle}>Personal Information</ThemedText>
+                {/* Child Quick Summary Hero Card */}
+                <View style={[styles.childHeroCard, { backgroundColor: cardColor, borderColor }]}>
+                    <View style={styles.childHeroRow}>
+                        <View style={[styles.childAvatarCircle, { backgroundColor: primaryColor + '20' }]}>
+                            <Ionicons name="happy" size={32} color={primaryColor} />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 14 }}>
+                            <ThemedText style={styles.childHeroName} numberOfLines={1}>
+                                {registration.name_of_child}
+                            </ThemedText>
+                            <View style={styles.childMetaRow}>
+                                <View style={[styles.childMetaPill, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#f1f5f9' }]}>
+                                    <Ionicons name="hourglass-outline" size={11} color={textSecondary} style={{ marginRight: 3 }} />
+                                    <ThemedText style={[styles.childMetaPillText, { color: textSecondary }]}>
+                                        {ageString}
+                                    </ThemedText>
+                                </View>
+                                {registration.gender && (
+                                    <View style={[styles.childMetaPill, { backgroundColor: resolvedTheme === 'dark' ? '#1e293b' : '#f1f5f9' }]}>
+                                        <Ionicons name="person-outline" size={11} color={textSecondary} style={{ marginRight: 3 }} />
+                                        <ThemedText style={[styles.childMetaPillText, { color: textSecondary }]}>
+                                            {registration.gender}
+                                        </ThemedText>
+                                    </View>
+                                )}
+                                {registration.blood_group && registration.blood_group !== 'N/A' && (
+                                    <View style={[styles.childMetaPill, { backgroundColor: resolvedTheme === 'dark' ? '#450a0a' : '#fef2f2' }]}>
+                                        <Ionicons name="water-outline" size={11} color="#ef4444" style={{ marginRight: 3 }} />
+                                        <ThemedText style={[styles.childMetaPillText, { color: '#ef4444' }]}>
+                                            {registration.blood_group}
+                                        </ThemedText>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
                     </View>
+                </View>
+
+                {/* Developmental Progress Journey Card */}
+                <View style={[styles.progressOverviewCard, { backgroundColor: resolvedTheme === 'dark' ? '#111827' : '#ffffff', borderColor }]}>
+                    <View style={styles.progressCardHeader}>
+                        <View style={{ flex: 1 }}>
+                            <ThemedText style={styles.progressTitle}>Developmental Journey</ThemedText>
+                            <ThemedText style={[styles.progressSubtitle, { color: textSecondary }]}>Active Milestones & Continuous Tracking</ThemedText>
+                        </View>
+                        <View style={[styles.liveStatusPill, { backgroundColor: '#10b98120', borderColor: '#10b98140' }]}>
+                            <View style={[styles.pulseDot, { backgroundColor: '#10b981' }]} />
+                            <ThemedText style={styles.liveStatusText}>ACTIVE</ThemedText>
+                        </View>
+                    </View>
+
+                    <View style={styles.therapyMiniGrid}>
+                        <View style={[styles.therapyMiniItem, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#f5f3ff', borderColor: '#8b5cf630' }]}>
+                            <Ionicons name="chatbubbles-outline" size={16} color="#8b5cf6" />
+                            <ThemedText style={[styles.therapyMiniText, { color: '#8b5cf6' }]}>Speech</ThemedText>
+                        </View>
+                        <View style={[styles.therapyMiniItem, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eef2ff', borderColor: '#4f46e530' }]}>
+                            <Ionicons name="hand-left-outline" size={16} color="#4f46e5" />
+                            <ThemedText style={[styles.therapyMiniText, { color: '#4f46e5' }]}>OT</ThemedText>
+                        </View>
+                        <View style={[styles.therapyMiniItem, { backgroundColor: resolvedTheme === 'dark' ? '#082f49' : '#f0f9ff', borderColor: '#0284c730' }]}>
+                            <Ionicons name="bulb-outline" size={16} color="#0284c7" />
+                            <ThemedText style={[styles.therapyMiniText, { color: '#0284c7' }]}>ABA</ThemedText>
+                        </View>
+                        <View style={[styles.therapyMiniItem, { backgroundColor: resolvedTheme === 'dark' ? '#134e4a' : '#f0fdfa', borderColor: '#0d948830' }]}>
+                            <Ionicons name="body-outline" size={16} color="#0d9488" />
+                            <ThemedText style={[styles.therapyMiniText, { color: '#0d9488' }]}>Physio</ThemedText>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Main 2-Column Action Tiles Grid */}
+                <ThemedText style={[styles.sectionHeading, { color: textSecondary }]}>PRIMARY MODULES</ThemedText>
+                
+                <View style={styles.actionGrid}>
+                    {/* Developmental Goals */}
+                    <TouchableOpacity
+                        style={[styles.gridCard, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eef2ff', borderColor: '#6366f140' }]}
+                        onPress={() => router.push({ pathname: '/goals/development' as any, params: { regNo: registration.registration_number } })}
+                        activeOpacity={0.85}
+                    >
+                        <LinearGradient
+                            colors={resolvedTheme === 'dark' ? ['#4338ca', '#312e81'] : ['#4f46e5', '#6366f1']}
+                            style={styles.gridIconCircle}
+                        >
+                            <Ionicons name="rocket" size={22} color="white" />
+                        </LinearGradient>
+                        <ThemedText style={[styles.gridCardTitle, { color: resolvedTheme === 'dark' ? '#c7d2fe' : '#312e81' }]}>
+                            Developmental Goals
+                        </ThemedText>
+                        <ThemedText style={[styles.gridCardSub, { color: textSecondary }]}>
+                            Milestones & Target Skills
+                        </ThemedText>
+                        <View style={styles.gridCardFooter}>
+                            <ThemedText style={[styles.gridActionLink, { color: '#4f46e5' }]}>View Goals →</ThemedText>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Developmental Activity */}
+                    <TouchableOpacity
+                        style={[styles.gridCard, { backgroundColor: resolvedTheme === 'dark' ? '#064e3b' : '#ecfdf5', borderColor: '#10b98140' }]}
+                        onPress={() => router.push({ pathname: '/goals', params: { regNo: registration.registration_number } })}
+                        activeOpacity={0.85}
+                    >
+                        <LinearGradient
+                            colors={resolvedTheme === 'dark' ? ['#059669', '#047857'] : ['#10b981', '#059669']}
+                            style={styles.gridIconCircle}
+                        >
+                            <Ionicons name="stats-chart" size={22} color="white" />
+                        </LinearGradient>
+                        <ThemedText style={[styles.gridCardTitle, { color: resolvedTheme === 'dark' ? '#a7f3d0' : '#065f46' }]}>
+                            Developmental Activity
+                        </ThemedText>
+                        <ThemedText style={[styles.gridCardSub, { color: textSecondary }]}>
+                            Daily Logs, Media & Notes
+                        </ThemedText>
+                        <View style={styles.gridCardFooter}>
+                            <ThemedText style={[styles.gridActionLink, { color: '#059669' }]}>View Feed →</ThemedText>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Attendance History */}
+                    <TouchableOpacity
+                        style={[styles.gridCard, { backgroundColor: resolvedTheme === 'dark' ? '#082f49' : '#f0f9ff', borderColor: '#0284c740' }]}
+                        onPress={() => router.push({ pathname: '/attendance' as any, params: { regNo: registration.registration_number, attendance: JSON.stringify(attendance) } })}
+                        activeOpacity={0.85}
+                    >
+                        <LinearGradient
+                            colors={resolvedTheme === 'dark' ? ['#0284c7', '#0369a1'] : ['#0ea5e9', '#0284c7']}
+                            style={styles.gridIconCircle}
+                        >
+                            <Ionicons name="calendar" size={22} color="white" />
+                        </LinearGradient>
+                        <ThemedText style={[styles.gridCardTitle, { color: resolvedTheme === 'dark' ? '#bae6fd' : '#075985' }]}>
+                            Session Attendance
+                        </ThemedText>
+                        <ThemedText style={[styles.gridCardSub, { color: textSecondary }]}>
+                            Monthly Calendar Matrix
+                        </ThemedText>
+                        <View style={styles.gridCardFooter}>
+                            <ThemedText style={[styles.gridActionLink, { color: '#0284c7' }]}>View Matrix →</ThemedText>
+                        </View>
+                    </TouchableOpacity>
+
+                    {/* Clinician Q&A Forum */}
+                    <TouchableOpacity
+                        style={[styles.gridCard, { backgroundColor: resolvedTheme === 'dark' ? '#2e1065' : '#f5f3ff', borderColor: '#8b5cf640' }]}
+                        onPress={() => {
+                            loadQnaData(registration.registration_number, true);
+                            setQnaModalVisible(true);
+                        }}
+                        activeOpacity={0.85}
+                    >
+                        <LinearGradient
+                            colors={resolvedTheme === 'dark' ? ['#7c3aed', '#5b21b6'] : ['#8b5cf6', '#7c3aed']}
+                            style={styles.gridIconCircle}
+                        >
+                            <Ionicons name="chatbubbles" size={22} color="white" />
+                        </LinearGradient>
+                        <ThemedText style={[styles.gridCardTitle, { color: resolvedTheme === 'dark' ? '#ddd6fe' : '#5b21b6' }]}>
+                            Clinician Q&A
+                        </ThemedText>
+                        <ThemedText style={[styles.gridCardSub, { color: textSecondary }]}>
+                            Ask Doctor & Helpdesk
+                        </ThemedText>
+                        <View style={styles.gridCardFooter}>
+                            <ThemedText style={[styles.gridActionLink, { color: '#7c3aed' }]}>Open Forum →</ThemedText>
+                        </View>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Secondary Actions & Reports Row */}
+                <ThemedText style={[styles.sectionHeading, { color: textSecondary, marginTop: 15 }]}>REPORTS & SERVICES</ThemedText>
+                
+                <View style={styles.secondaryRow}>
+                    <TouchableOpacity
+                        style={[styles.secondaryCard, { backgroundColor: cardColor, borderColor }]}
+                        onPress={() => router.push({ pathname: '/assessmentReport' as any, params: { regNo: registration.registration_number } })}
+                        activeOpacity={0.8}
+                    >
+                        <View style={[styles.secIconBox, { backgroundColor: '#0f766e15' }]}>
+                            <Ionicons name="analytics" size={20} color="#0f766e" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <ThemedText style={styles.secCardTitle}>Assessment Report</ThemedText>
+                            <ThemedText style={[styles.secCardSub, { color: textSecondary }]}>PDF Downloads & Analysis</ThemedText>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={textSecondary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.secondaryCard, { backgroundColor: cardColor, borderColor }]}
+                        onPress={() => router.push({ pathname: '/leaveform' as any, params: { regNo: registration.registration_number } })}
+                        activeOpacity={0.8}
+                    >
+                        <View style={[styles.secIconBox, { backgroundColor: '#d9770615' }]}>
+                            <Ionicons name="time" size={20} color="#d97706" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <ThemedText style={styles.secCardTitle}>Leave Application</ThemedText>
+                            <ThemedText style={[styles.secCardSub, { color: textSecondary }]}>Apply & Track Leave Requests</ThemedText>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={textSecondary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.secondaryCard, { backgroundColor: cardColor, borderColor }]}
+                        onPress={() => router.push({ pathname: '/report' as any, params: { regNo: registration.registration_number } })}
+                        activeOpacity={0.8}
+                    >
+                        <View style={[styles.secIconBox, { backgroundColor: '#be123c15' }]}>
+                            <Ionicons name="document-text" size={20} color="#be123c" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <ThemedText style={styles.secCardTitle}>History Recording Sheet</ThemedText>
+                            <ThemedText style={[styles.secCardSub, { color: textSecondary }]}>Medical & Assessment History</ThemedText>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={textSecondary} />
+                    </TouchableOpacity>
+                </View>
+
+                {/* Guardian / Contact Information */}
+                <ThemedText style={[styles.sectionHeading, { color: textSecondary, marginTop: 15 }]}>GUARDIAN INFORMATION</ThemedText>
+                <View style={[styles.section, { backgroundColor: cardColor, borderColor, borderWidth: 1 }]}>
                     <View style={styles.infoRow}>
                         <InfoItem label="Mother" value={registration.mother_name} icon="woman-outline" />
                         <InfoItem label="Phone" value={registration.mother_phone_number} icon="call-outline" />
@@ -456,90 +700,7 @@ export default function DetailsScreen() {
                     </View>
                 </View>
 
-                {/* Dashboard Buttons */}
-                <View style={styles.buttonStack}>
-                    <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#4338ca' }]}
-                        onPress={() => router.push({ pathname: '/goals', params: { regNo: registration.registration_number } })}
-                    >
-                        <View style={styles.btnIcon}>
-                            <Ionicons name="stats-chart" size={24} color="white" />
-                        </View>
-                        <ThemedText style={styles.btnText}>Developmental Activity</ThemedText>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#4f46e5' }]}
-                        onPress={() => router.push({ pathname: '/goals/development' as any, params: { regNo: registration.registration_number } })}
-                    >
-                        <View style={styles.btnIcon}>
-                            <Ionicons name="rocket" size={24} color="white" />
-                        </View>
-                        <ThemedText style={styles.btnText}>Developmental Goals</ThemedText>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#15803d' }]}
-                        onPress={() => router.push({ pathname: '/leaveform' as any, params: { regNo: registration.registration_number } })}
-                    >
-                        <View style={styles.btnIcon}>
-                            <Ionicons name="calendar" size={24} color="white" />
-                        </View>
-                        <ThemedText style={styles.btnText}>Leave Dashboard</ThemedText>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#d97706' }]}
-                        onPress={() => router.push({ pathname: '/attendance' as any, params: { regNo: registration.registration_number, attendance: JSON.stringify(attendance) } })}
-                    >
-                        <View style={styles.btnIcon}>
-                            <Ionicons name="time" size={24} color="white" />
-                        </View>
-                        <ThemedText style={styles.btnText}>Attendance History</ThemedText>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#0f766e' }]}
-                        onPress={() => router.push({ pathname: '/report' as any, params: { regNo: registration.registration_number } })}
-                    >
-                        <View style={styles.btnIcon}>
-                            <Ionicons name="document-text" size={24} color="white" />
-                        </View>
-                        <ThemedText style={styles.btnText}>History Report</ThemedText>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#0369a1' }]}
-                        onPress={() => router.push({ pathname: '/assessmentReport' as any, params: { regNo: registration.registration_number } })}
-                    >
-                        <View style={styles.btnIcon}>
-                            <Ionicons name="analytics" size={24} color="white" />
-                        </View>
-                        <ThemedText style={styles.btnText}>Assessment Report</ThemedText>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={[styles.dashboardBtn, { backgroundColor: '#7c3aed' }]}
-                        onPress={() => {
-                            loadQnaData(registration.registration_number, true);
-                            setQnaModalVisible(true);
-                        }}
-                    >
-                        <View style={styles.btnIcon}>
-                            <Ionicons name="chatbubbles" size={24} color="white" />
-                        </View>
-                        <ThemedText style={styles.btnText}>Q&A Forum</ThemedText>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={{ height: 40 }} />
+                <View style={{ height: 50 }} />
             </ScrollView>
 
             {/* Theme Dropdown Modal */}

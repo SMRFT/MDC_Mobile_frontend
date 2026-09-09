@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, StyleSheet, ScrollView, TouchableOpacity, FlatList,
-    Dimensions, StatusBar, ActivityIndicator, RefreshControl
+    Dimensions, StatusBar, ActivityIndicator, RefreshControl, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
 import { SessionMatrixGrid } from '@/components/SessionMatrixGrid';
 import { fetchPatientAttendance } from '@/scripts/goalsApi';
+import { TherapyPalette } from '@/constants/theme';
 
 const { height } = Dimensions.get('window');
 
@@ -72,6 +73,7 @@ export default function AttendanceHistory() {
     const [refreshing, setRefreshing] = useState(false);
 
     const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
 
     const backgroundColor = useThemeColor({}, 'background');
     const cardBg = useThemeColor({}, 'card');
@@ -132,53 +134,74 @@ export default function AttendanceHistory() {
         const isPaid = parseFloat(item.total_amount_paid) >= parseFloat(item.total_amount);
 
         return (
-            <View style={[styles.card, { backgroundColor: cardBg, borderColor: borderColor }]}>
-                <View style={styles.cardHeader}>
-                    <View style={styles.dateInfo}>
-                        <View style={[styles.dateBox, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f5f3ff', borderColor: borderColor }]}>
-                            <ThemedText style={[styles.dateNum, { color: primaryColor }]}>{dateObj.getDate()}</ThemedText>
-                            <ThemedText style={[styles.dateMonth, { color: primaryColor }]}>
-                                {dateObj.toLocaleDateString('en-US', { month: 'short' })}
-                            </ThemedText>
-                        </View>
-                        <View style={styles.dateTextInfo}>
-                            <ThemedText style={styles.yearText}>{dateObj.getFullYear()}</ThemedText>
-                            <ThemedText style={[styles.sessionText, { color: textSecondary }]}># {item.session}</ThemedText>
-                        </View>
-                    </View>
-                    <View style={[styles.paymentBadge, { backgroundColor: isPaid ? '#ecfdf5' : '#fff7ed' }]}>
-                        <Ionicons
-                            name={isPaid ? "checkmark-circle" : "alert-circle"}
-                            size={14}
-                            color={isPaid ? "#059669" : "#c2410c"}
-                            style={{ marginRight: 5 }}
-                        />
-                        <ThemedText style={[styles.paymentText, { color: isPaid ? '#059669' : '#c2410c' }]}>
-                            {isPaid ? 'Paid' : 'Unpaid'}
-                        </ThemedText>
-                    </View>
-                </View>
+            <View style={[
+                styles.card, 
+                { 
+                    backgroundColor: cardBg, 
+                    borderColor: isDark ? 'rgba(52, 211, 153, 0.2)' : borderColor 
+                }
+            ]}>
+                {/* Accent Bar */}
+                <LinearGradient
+                    colors={['#059669', '#10b981', '#4338ca']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.cardAccentBar}
+                />
 
-                <View style={[styles.therapyContainer, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc' }]}>
-                    {therapyDetails && therapyDetails.map((t: any, i: number) => (
-                        <View key={i} style={styles.therapyRow}>
-                            <View style={[styles.therapyDot, { backgroundColor: primaryColor }]} />
-                            <ThemedText style={styles.therapyName}>{t.therapy_name}</ThemedText>
-                            <View style={[styles.countBadge, { backgroundColor: cardBg, borderColor: borderColor }]}>
-                                <ThemedText style={[styles.therapyCount, { color: textSecondary }]}>{t.sesion_per_therapy}</ThemedText>
+                <View style={styles.cardInner}>
+                    <View style={styles.cardHeader}>
+                        <View style={styles.dateInfo}>
+                            <View style={[styles.dateBox, { backgroundColor: isDark ? '#1e293b' : '#f0fdf4', borderColor: isDark ? '#064e3b' : '#bbf7d0' }]}>
+                                <ThemedText style={styles.dateNum}>{dateObj.getDate()}</ThemedText>
+                                <ThemedText style={styles.dateMonth}>
+                                    {dateObj.toLocaleDateString('en-US', { month: 'short' })}
+                                </ThemedText>
+                            </View>
+                            <View style={styles.dateTextInfo}>
+                                <ThemedText style={styles.yearText}>{dateObj.getFullYear()}</ThemedText>
+                                <View style={[styles.sessionPill, { backgroundColor: isDark ? '#1e1b4b' : '#eef2ff' }]}>
+                                    <Ionicons name="sparkles" size={11} color="#4f46e5" style={{ marginRight: 3 }} />
+                                    <ThemedText style={styles.sessionText}>Session #{item.session}</ThemedText>
+                                </View>
                             </View>
                         </View>
-                    ))}
-                </View>
-
-                <View style={[styles.cardFooter, { borderTopColor: borderColor }]}>
-                    <View style={styles.finGroup}>
-                        <ThemedText style={[styles.finLabel, { color: textSecondary }]}>Cost</ThemedText>
-                        <ThemedText style={styles.finVal}>₹{item.total_amount}</ThemedText>
+                        <View style={[styles.paymentBadge, { backgroundColor: isPaid ? (isDark ? '#064e3b33' : '#dcfce7') : (isDark ? '#7c2d1233' : '#fee2e2') }]}>
+                            <Ionicons
+                                name={isPaid ? "checkmark-circle" : "alert-circle"}
+                                size={13}
+                                color={isPaid ? "#059669" : "#dc2626"}
+                                style={{ marginRight: 4 }}
+                            />
+                            <ThemedText style={[styles.paymentText, { color: isPaid ? '#059669' : '#dc2626' }]}>
+                                {isPaid ? 'Paid' : 'Unpaid'}
+                            </ThemedText>
+                        </View>
                     </View>
-                    <View style={styles.finGroup}>
-                        <ThemedText style={[styles.finLabel, { textAlign: 'right', color: textSecondary }]}>Received</ThemedText>
-                        <ThemedText style={[styles.finVal, { color: '#059669', textAlign: 'right' }]}>₹{item.total_amount_paid}</ThemedText>
+
+                    <View style={[styles.therapyContainer, { backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderColor }]}>
+                        {therapyDetails && therapyDetails.map((t: any, i: number) => (
+                            <View key={i} style={styles.therapyRow}>
+                                <View style={[styles.therapyDot, { backgroundColor: primaryColor }]} />
+                                <ThemedText style={styles.therapyName}>{t.therapy_name}</ThemedText>
+                                <View style={[styles.countBadge, { backgroundColor: isDark ? '#0f172a' : '#ffffff', borderColor }]}>
+                                    <ThemedText style={[styles.therapyCount, { color: primaryColor }]}>
+                                        {t.sesion_per_therapy} {t.sesion_per_therapy === 1 ? 'Slot' : 'Slots'}
+                                    </ThemedText>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+
+                    <View style={[styles.cardFooter, { borderTopColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                        <View style={styles.finGroup}>
+                            <ThemedText style={[styles.finLabel, { color: textSecondary }]}>Session Fee</ThemedText>
+                            <ThemedText style={styles.finVal}>₹{item.total_amount}</ThemedText>
+                        </View>
+                        <View style={styles.finGroup}>
+                            <ThemedText style={[styles.finLabel, { textAlign: 'right', color: textSecondary }]}>Amount Received</ThemedText>
+                            <ThemedText style={[styles.finVal, { color: '#059669', textAlign: 'right' }]}>₹{item.total_amount_paid}</ThemedText>
+                        </View>
                     </View>
                 </View>
             </View>
@@ -188,15 +211,39 @@ export default function AttendanceHistory() {
     return (
         <ThemedView style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <LinearGradient colors={resolvedTheme === 'dark' ? ['#0f172a', '#1e293b'] : ['#6366f1', '#4f46e5']} style={styles.header}>
+            <LinearGradient 
+                colors={isDark ? ['#0f172a', '#134e4a', '#064e3b'] : ['#059669', '#10b981', '#047857']} 
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <View style={styles.navBar}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                        <Ionicons name="chevron-back" size={26} color="white" />
+                        <Ionicons name="chevron-back" size={24} color="white" />
                     </TouchableOpacity>
-                    <ThemedText style={styles.title}>History</ThemedText>
-                    <View style={{ width: 40 }} />
+                    <View style={{ alignItems: 'center' }}>
+                        <ThemedText style={styles.title}>Attendance History</ThemedText>
+                        <ThemedText style={styles.subTitle}>Session Records & Fee Status</ThemedText>
+                    </View>
+                    <TouchableOpacity onPress={() => loadAttendance(false)} style={styles.refreshBtn}>
+                        <Ionicons name="refresh-outline" size={20} color="white" />
+                    </TouchableOpacity>
                 </View>
-                <ThemedText style={styles.patientId}>{regNo}</ThemedText>
+
+                {regNo ? (
+                    <View style={styles.regBadgeWrap}>
+                        <View style={styles.patientBadge}>
+                            <Ionicons name="medical" size={12} color="#a7f3d0" />
+                            <ThemedText style={styles.patientId}>{regNo}</ThemedText>
+                        </View>
+                        <View style={styles.statCountBadge}>
+                            <Ionicons name="calendar-outline" size={12} color="#fef08a" />
+                            <ThemedText style={styles.statCountText}>
+                                {attendanceList.length} Total Sessions
+                            </ThemedText>
+                        </View>
+                    </View>
+                ) : null}
             </LinearGradient>
 
             <View style={styles.main}>
@@ -205,7 +252,7 @@ export default function AttendanceHistory() {
                         onPress={() => setViewMode('matrix')}
                         style={[styles.toggleBtn, viewMode === 'matrix' && styles.toggleBtnActive]}
                     >
-                        <Ionicons name="grid-outline" size={16} color={viewMode === 'matrix' ? 'white' : textSecondary} />
+                        <Ionicons name="grid-outline" size={15} color={viewMode === 'matrix' ? 'white' : textSecondary} />
                         <ThemedText style={[styles.toggleText, viewMode === 'matrix' && styles.toggleTextActive]}>
                             Matrix Grid
                         </ThemedText>
@@ -215,7 +262,7 @@ export default function AttendanceHistory() {
                         onPress={() => setViewMode('list')}
                         style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
                     >
-                        <Ionicons name="list-outline" size={16} color={viewMode === 'list' ? 'white' : textSecondary} />
+                        <Ionicons name="list-outline" size={15} color={viewMode === 'list' ? 'white' : textSecondary} />
                         <ThemedText style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
                             Card List
                         </ThemedText>
@@ -227,18 +274,26 @@ export default function AttendanceHistory() {
                 ) : (
                     <>
                         <View style={styles.filterSection}>
-                            <View style={styles.filterHeader}>
-                                <Ionicons name="filter" size={18} color={textSecondary} />
-                                <ThemedText style={[styles.filterTitle, { color: textSecondary }]}>Year Review</ThemedText>
-                            </View>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearScroll}>
                                 {years.map((y: string) => (
                                     <TouchableOpacity
                                         key={y}
                                         onPress={() => setSelectedYear(y)}
-                                        style={[styles.yBtn, selectedYear === y && styles.yBtnActive, { backgroundColor: cardBg, borderColor: borderColor }]}
+                                        style={[
+                                            styles.yBtn, 
+                                            selectedYear === y && styles.yBtnActive, 
+                                            { backgroundColor: selectedYear === y ? (isDark ? '#059669' : '#047857') : cardBg, borderColor: selectedYear === y ? '#10b981' : borderColor }
+                                        ]}
                                     >
-                                        <ThemedText style={[styles.yTxt, selectedYear === y && styles.yTxtActive]}>{y}</ThemedText>
+                                        <Ionicons 
+                                            name="calendar" 
+                                            size={13} 
+                                            color={selectedYear === y ? 'white' : textSecondary} 
+                                            style={{ marginRight: 5 }} 
+                                        />
+                                        <ThemedText style={[styles.yTxt, selectedYear === y && styles.yTxtActive]}>
+                                            {y === 'All' ? 'All Years' : y}
+                                        </ThemedText>
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -255,9 +310,14 @@ export default function AttendanceHistory() {
                             }
                             ListEmptyComponent={
                                 <View style={styles.empty}>
-                                    <Ionicons name="document-text-outline" size={80} color={borderColor} />
-                                    <ThemedText style={[styles.emptyTitle, { color: textSecondary }]}>Empty History</ThemedText>
-                                    <ThemedText style={[styles.emptySub, { color: textSecondary }]}>No attendance records found for this selection.</ThemedText>
+                                    <LinearGradient
+                                        colors={isDark ? ['#1e293b', '#0f172a'] : ['#ecfdf5', '#d1fae5']}
+                                        style={styles.emptyIconCircle}
+                                    >
+                                        <Ionicons name="document-text-outline" size={48} color="#059669" />
+                                    </LinearGradient>
+                                    <ThemedText style={styles.emptyTitle}>No Attendance Records</ThemedText>
+                                    <ThemedText style={[styles.emptySub, { color: textSecondary }]}>No attendance data found for this selection.</ThemedText>
                                 </View>
                             }
                         />
@@ -270,48 +330,131 @@ export default function AttendanceHistory() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 22, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    header: { 
+        paddingTop: Platform.OS === 'ios' ? 60 : 45, 
+        paddingHorizontal: 20, 
+        paddingBottom: 22, 
+        borderBottomLeftRadius: 32, 
+        borderBottomRightRadius: 32,
+        elevation: 8,
+        shadowColor: '#059669',
+        shadowOpacity: 0.25,
+        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 6 }
+    },
     navBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    backBtn: { width: 44, height: 44, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 24, fontWeight: '900', color: 'white' },
-    patientId: { color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginTop: 10, fontWeight: '700', fontSize: 13, textTransform: 'uppercase' },
-    main: { flex: 1, marginTop: 16 },
-    viewToggleContainer: { flexDirection: 'row', marginHorizontal: 24, marginBottom: 12, padding: 4, borderRadius: 16, borderWidth: 1 },
-    toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12 },
-    toggleBtnActive: { backgroundColor: '#4f46e5' },
-    toggleText: { fontSize: 13, fontWeight: '800', marginLeft: 6, color: '#64748b' },
+    backBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    refreshBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    title: { fontSize: 20, fontWeight: '900', color: 'white', letterSpacing: 0.3 },
+    subTitle: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+    regBadgeWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 14,
+        gap: 10,
+        flexWrap: 'wrap'
+    },
+    patientBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 14,
+        gap: 6
+    },
+    patientId: { color: 'white', fontWeight: '800', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+    statCountBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 14,
+        gap: 6
+    },
+    statCountText: { color: 'white', fontWeight: '700', fontSize: 12 },
+    main: { flex: 1, marginTop: 12 },
+    viewToggleContainer: { 
+        flexDirection: 'row', 
+        marginHorizontal: 20, 
+        marginBottom: 12, 
+        padding: 4, 
+        borderRadius: 18, 
+        borderWidth: 1 
+    },
+    toggleBtn: { 
+        flex: 1, 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        paddingVertical: 9, 
+        borderRadius: 14 
+    },
+    toggleBtnActive: { backgroundColor: '#059669' },
+    toggleText: { fontSize: 12.5, fontWeight: '800', marginLeft: 6, color: '#64748b' },
     toggleTextActive: { color: 'white' },
-    filterSection: { paddingHorizontal: 24, marginBottom: 20 },
-    filterHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    filterTitle: { fontSize: 12, fontWeight: '900', marginLeft: 8, textTransform: 'uppercase' },
-    yearScroll: { paddingRight: 10 },
-    yBtn: { paddingHorizontal: 22, paddingVertical: 10, borderRadius: 14, marginRight: 10, borderWidth: 1 },
-    yBtnActive: { backgroundColor: '#15803d', borderColor: '#15803d' },
-    yTxt: { fontSize: 14, fontWeight: '700', color: '#64748b' },
-    yTxtActive: { color: 'white' },
-    list: { padding: 20, paddingBottom: 50 },
-    card: { borderRadius: 24, padding: 20, marginBottom: 18, elevation: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, borderWidth: 1 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+    filterSection: { marginBottom: 12 },
+    yearScroll: { paddingHorizontal: 20, gap: 8 },
+    yBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
+    yBtnActive: {},
+    yTxt: { fontSize: 12.5, fontWeight: '700', color: '#64748b' },
+    yTxtActive: { color: 'white', fontWeight: '800' },
+    list: { paddingHorizontal: 20, paddingBottom: 60 },
+    card: { 
+        borderRadius: 24, 
+        marginBottom: 16, 
+        elevation: 3, 
+        shadowColor: '#000', 
+        shadowOpacity: 0.05, 
+        shadowRadius: 10, 
+        shadowOffset: { width: 0, height: 4 }, 
+        borderWidth: 1,
+        position: 'relative',
+        overflow: 'hidden'
+    },
+    cardAccentBar: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: 6,
+    },
+    cardInner: {
+        padding: 18,
+        paddingLeft: 22
+    },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
     dateInfo: { flexDirection: 'row', alignItems: 'center' },
-    dateBox: { width: 55, height: 55, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-    dateNum: { fontSize: 20, fontWeight: '900' },
-    dateMonth: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-    dateTextInfo: { marginLeft: 15 },
-    yearText: { fontSize: 17, fontWeight: '900' },
-    sessionText: { fontSize: 13, fontWeight: '700' },
-    paymentBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-    paymentText: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-    therapyContainer: { borderRadius: 20, padding: 18, marginBottom: 20 },
-    therapyRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-    therapyDot: { width: 6, height: 6, borderRadius: 3, marginRight: 12 },
-    therapyName: { flex: 1, fontSize: 15, fontWeight: '700' },
-    countBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
-    therapyCount: { fontSize: 10, fontWeight: '800' },
-    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 20 },
+    dateBox: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+    dateNum: { fontSize: 18, fontWeight: '900', color: '#059669' },
+    dateMonth: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', color: '#059669' },
+    dateTextInfo: { marginLeft: 12 },
+    yearText: { fontSize: 15, fontWeight: '900' },
+    sessionPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, marginTop: 3 },
+    sessionText: { fontSize: 11, fontWeight: '800', color: '#4f46e5' },
+    paymentBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+    paymentText: { fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.3 },
+    therapyContainer: { borderRadius: 16, padding: 14, marginBottom: 14, borderWidth: 1 },
+    therapyRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    therapyDot: { width: 6, height: 6, borderRadius: 3, marginRight: 10 },
+    therapyName: { flex: 1, fontSize: 13.5, fontWeight: '700' },
+    countBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1 },
+    therapyCount: { fontSize: 10.5, fontWeight: '800' },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, paddingTop: 12 },
     finGroup: { flex: 1 },
-    finLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', marginBottom: 4 },
-    finVal: { fontSize: 18, fontWeight: '900' },
-    empty: { alignItems: 'center', marginTop: 80 },
-    emptyTitle: { fontSize: 18, fontWeight: '900', marginTop: 15 },
-    emptySub: { fontSize: 14, textAlign: 'center', marginTop: 5, paddingHorizontal: 40 },
-});
+    finLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', marginBottom: 3, letterSpacing: 0.5 },
+    finVal: { fontSize: 16, fontWeight: '900' },
+    empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: 40 },
+    emptyIconCircle: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16
+    },
+    emptyTitle: { fontSize: 18, fontWeight: '900' },
+    emptySub: { fontSize: 13.5, textAlign: 'center', marginTop: 6, lineHeight: 20 },
+});

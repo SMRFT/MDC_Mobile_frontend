@@ -23,6 +23,7 @@ export default function LeaveDashboard() {
     const params = useLocalSearchParams();
     const regNo = params.regNo as string;
     const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === 'dark';
 
     const [leaves, setLeaves] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -104,14 +105,14 @@ export default function LeaveDashboard() {
 
     const StatusBadge = ({ status }: { status: string }) => {
         const theme = {
-            'Approved': { bg: '#ecfdf5', text: '#059669', icon: 'checkmark-circle' },
-            'Rejected': { bg: '#fef2f2', text: '#dc2626', icon: 'close-circle' },
-            'Pending': { bg: '#fffbeb', text: '#d97706', icon: 'time' }
-        }[status] || { bg: '#fffbeb', text: '#d97706', icon: 'time' };
+            'Approved': { bg: isDark ? '#064e3b33' : '#dcfce7', text: '#059669', icon: 'checkmark-circle' },
+            'Rejected': { bg: isDark ? '#7f1d1d33' : '#fee2e2', text: '#dc2626', icon: 'close-circle' },
+            'Pending': { bg: isDark ? '#78350f33' : '#fef3c7', text: '#d97706', icon: 'time' }
+        }[status] || { bg: isDark ? '#78350f33' : '#fef3c7', text: '#d97706', icon: 'time' };
 
         return (
             <View style={[styles.badge, { backgroundColor: theme.bg }]}>
-                <Ionicons name={theme.icon as any} size={14} color={theme.text} style={{ marginRight: 4 }} />
+                <Ionicons name={theme.icon as any} size={12} color={theme.text} style={{ marginRight: 4 }} />
                 <ThemedText style={[styles.badgeText, { color: theme.text }]}>{status}</ThemedText>
             </View>
         );
@@ -120,34 +121,52 @@ export default function LeaveDashboard() {
     const renderLeaveItem = ({ item }: { item: any }) => {
         const dateObj = new Date(item.leave_date);
         return (
-            <View style={[styles.card, { backgroundColor: cardBg, borderColor: borderColor }]}>
-                <View style={[styles.cardDate, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#ecfdf5', borderColor: borderColor }]}>
-                    <ThemedText style={styles.dateNum}>{dateObj.getDate()}</ThemedText>
-                    <ThemedText style={styles.dateMonth}>
-                        {dateObj.toLocaleDateString('en-US', { month: 'short' })}
-                    </ThemedText>
-                </View>
-                <View style={styles.cardContent}>
-                    <View style={styles.cardTop}>
-                        <ThemedText style={styles.cardReason} numberOfLines={2}>{item.leave_reason}</ThemedText>
-                        <StatusBadge status={item.leave_status} />
-                    </View>
-                    
-                    {(item.leave_reject_comments || item.leave_approved_date) && (
-                        <View style={[styles.cardDetail, { borderTopColor: borderColor }]}>
-                            {item.leave_reject_comments && (
-                                <View style={styles.rejectBox}>
-                                    <Ionicons name="alert-circle-outline" size={16} color={textSecondary} />
-                                    <ThemedText style={[styles.rejectTxt, { color: textSecondary }]}>{item.leave_reject_comments}</ThemedText>
+            <View style={[
+                styles.card, 
+                { 
+                    backgroundColor: cardBg, 
+                    borderColor: isDark ? 'rgba(52, 211, 153, 0.2)' : borderColor 
+                }
+            ]}>
+                {/* Left Accent Bar */}
+                <LinearGradient
+                    colors={['#059669', '#10b981', '#0284c7']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.cardAccentBar}
+                />
+
+                <View style={styles.cardInner}>
+                    <View style={styles.cardHeaderRow}>
+                        <View style={[styles.cardDate, { backgroundColor: isDark ? '#1e293b' : '#f0fdf4', borderColor: isDark ? '#064e3b' : '#bbf7d0' }]}>
+                            <ThemedText style={styles.dateNum}>{dateObj.getDate()}</ThemedText>
+                            <ThemedText style={styles.dateMonth}>
+                                {dateObj.toLocaleDateString('en-US', { month: 'short' })}
+                            </ThemedText>
+                        </View>
+                        <View style={styles.cardContent}>
+                            <View style={styles.cardTop}>
+                                <ThemedText style={styles.cardReason} numberOfLines={2}>{item.leave_reason}</ThemedText>
+                                <StatusBadge status={item.leave_status} />
+                            </View>
+                            
+                            {(item.leave_reject_comments || item.leave_approved_date) && (
+                                <View style={[styles.cardDetail, { borderTopColor: isDark ? '#1e293b' : '#f1f5f9' }]}>
+                                    {item.leave_reject_comments && (
+                                        <View style={styles.rejectBox}>
+                                            <Ionicons name="alert-circle-outline" size={14} color="#dc2626" />
+                                            <ThemedText style={[styles.rejectTxt, { color: '#dc2626' }]}>{item.leave_reject_comments}</ThemedText>
+                                        </View>
+                                    )}
+                                    {item.leave_approved_date && (
+                                        <ThemedText style={[styles.approvedTxt, { color: textSecondary }]}>
+                                            Verified: {new Date(item.leave_approved_date).toLocaleDateString()}
+                                        </ThemedText>
+                                    )}
                                 </View>
                             )}
-                            {item.leave_approved_date && (
-                                <ThemedText style={[styles.approvedTxt, { color: textSecondary }]}>
-                                    Verified: {new Date(item.leave_approved_date).toLocaleDateString()}
-                                </ThemedText>
-                            )}
                         </View>
-                    )}
+                    </View>
                 </View>
             </View>
         );
@@ -156,28 +175,53 @@ export default function LeaveDashboard() {
     return (
         <ThemedView style={styles.container}>
             <StatusBar barStyle="light-content" />
-            <LinearGradient colors={resolvedTheme === 'dark' ? ['#0f172a', '#1e293b'] : ['#059669', '#10b981']} style={styles.header}>
+            <LinearGradient 
+                colors={isDark ? ['#0f172a', '#134e4a', '#064e3b'] : ['#059669', '#10b981', '#047857']} 
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.header}
+            >
                 <View style={styles.headerNav}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-                        <Ionicons name="chevron-back" size={26} color="white" />
+                        <Ionicons name="chevron-back" size={24} color="white" />
                     </TouchableOpacity>
-                    <ThemedText style={styles.title}>Leave Management</ThemedText>
-                    <View style={{ width: 40 }} />
+                    <View style={{ alignItems: 'center' }}>
+                        <ThemedText style={styles.title}>Leave Management</ThemedText>
+                        <ThemedText style={styles.subTitle}>Absence Requests & Approvals</ThemedText>
+                    </View>
+                    <TouchableOpacity onPress={fetchLeaves} style={styles.iconBtn}>
+                        <Ionicons name="refresh-outline" size={20} color="white" />
+                    </TouchableOpacity>
                 </View>
-                <View style={[styles.patientBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                    <ThemedText style={styles.patientId}>{regNo}</ThemedText>
-                </View>
+
+                {regNo ? (
+                    <View style={styles.headerStatsRow}>
+                        <View style={styles.patientBadge}>
+                            <Ionicons name="medical" size={12} color="#a7f3d0" />
+                            <ThemedText style={styles.patientId}>{regNo}</ThemedText>
+                        </View>
+                        <View style={styles.statCountBadge}>
+                            <Ionicons name="time-outline" size={12} color="#fef08a" />
+                            <ThemedText style={styles.statCountText}>
+                                {leaves.length} {leaves.length === 1 ? 'Request' : 'Requests'}
+                            </ThemedText>
+                        </View>
+                    </View>
+                ) : null}
             </LinearGradient>
 
             <View style={styles.main}>
-                <View style={[styles.filterBar, { backgroundColor: cardBg }]}>
-                    <ThemedText style={styles.sectionTitle}>History & Status</ThemedText>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.months}>
+                <View style={styles.filterBar}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthsScroll}>
                         {MONTHS.map(m => (
                             <TouchableOpacity
                                 key={m}
                                 onPress={() => setSelectedMonth(m)}
-                                style={[styles.mBtn, selectedMonth === m && styles.mBtnActive, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f1f5f9' }]}
+                                style={[
+                                    styles.mBtn, 
+                                    selectedMonth === m && styles.mBtnActive, 
+                                    { backgroundColor: selectedMonth === m ? (isDark ? '#059669' : '#047857') : cardBg, borderColor: selectedMonth === m ? '#10b981' : borderColor }
+                                ]}
                             >
                                 <ThemedText style={[styles.mTxt, selectedMonth === m && styles.mTxtActive]}>{m}</ThemedText>
                             </TouchableOpacity>
@@ -193,19 +237,32 @@ export default function LeaveDashboard() {
                         renderItem={renderLeaveItem}
                         keyExtractor={(item, index) => index.toString()}
                         contentContainerStyle={styles.list}
+                        showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View style={styles.empty}>
-                                <Ionicons name="calendar-outline" size={80} color={borderColor} />
-                                <ThemedText style={[styles.emptyTitle, { color: textSecondary }]}>No Records</ThemedText>
-                                <ThemedText style={[styles.emptySub, { color: textSecondary }]}>Select a different month or request a new leave.</ThemedText>
+                                <LinearGradient
+                                    colors={isDark ? ['#1e293b', '#0f172a'] : ['#ecfdf5', '#d1fae5']}
+                                    style={styles.emptyIconCircle}
+                                >
+                                    <Ionicons name="calendar-outline" size={48} color="#059669" />
+                                </LinearGradient>
+                                <ThemedText style={styles.emptyTitle}>No Leave Requests</ThemedText>
+                                <ThemedText style={[styles.emptySub, { color: textSecondary }]}>
+                                    Tap the '+' button below to apply for a session leave.
+                                </ThemedText>
                             </View>
                         }
                     />
                 )}
             </View>
 
-            <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-                <LinearGradient colors={['#10b981', '#059669']} style={styles.fabGradient}>
+            <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)} activeOpacity={0.88}>
+                <LinearGradient 
+                    colors={['#10b981', '#059669', '#047857']} 
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.fabGradient}
+                >
                     <Ionicons name="add" size={30} color="white" />
                 </LinearGradient>
             </TouchableOpacity>
@@ -219,9 +276,14 @@ export default function LeaveDashboard() {
                         <View style={[styles.sheet, { backgroundColor: cardBg }]}>
                             <View style={styles.sheetBar} />
                             <View style={styles.sheetHead}>
-                                <ThemedText style={styles.sheetTitle}>New Request</ThemedText>
+                                <View>
+                                    <ThemedText style={styles.sheetTitle}>Request Session Leave</ThemedText>
+                                    <ThemedText style={[styles.sheetSubTitle, { color: textSecondary }]}>
+                                        Submit absence date and reason for approval
+                                    </ThemedText>
+                                </View>
                                 <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.sheetClose}>
-                                    <Ionicons name="close" size={24} color={textSecondary} />
+                                    <Ionicons name="close" size={24} color={textColor} />
                                 </TouchableOpacity>
                             </View>
 
@@ -230,8 +292,8 @@ export default function LeaveDashboard() {
                                 keyboardShouldPersistTaps="handled"
                             >
                                 <View style={styles.field}>
-                                    <ThemedText style={styles.fieldLabel}>Date of Leave</ThemedText>
-                                    <View style={[styles.inputContainer, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor }]}>
+                                    <ThemedText style={[styles.fieldLabel, { color: textSecondary }]}>DATE OF LEAVE</ThemedText>
+                                    <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderColor: borderColor }]}>
                                         {Platform.OS === 'web' ? (
                                             <input
                                                 type="date"
@@ -242,7 +304,7 @@ export default function LeaveDashboard() {
                                                     padding: '14px',
                                                     backgroundColor: 'transparent',
                                                     border: 'none',
-                                                    fontSize: '16px',
+                                                    fontSize: '15px',
                                                     color: textColor,
                                                     width: '100%',
                                                     outline: 'none',
@@ -252,7 +314,7 @@ export default function LeaveDashboard() {
                                         ) : (
                                             <>
                                                 <TouchableOpacity style={styles.datePickerBtn} onPress={() => setShowDatePicker(true)}>
-                                                    <Ionicons name="calendar" size={20} color="#059669" />
+                                                    <Ionicons name="calendar" size={18} color="#059669" />
                                                     <ThemedText style={styles.dateBtnTxt}>{leaveDate.toLocaleDateString()}</ThemedText>
                                                 </TouchableOpacity>
                                                 {showDatePicker && (
@@ -275,10 +337,10 @@ export default function LeaveDashboard() {
                                 </View>
 
                                 <View style={styles.field}>
-                                    <ThemedText style={styles.fieldLabel}>Reason for Absence</ThemedText>
+                                    <ThemedText style={[styles.fieldLabel, { color: textSecondary }]}>REASON FOR ABSENCE</ThemedText>
                                     <TextInput
-                                        style={[styles.area, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f8fafc', borderColor: borderColor, color: textColor }]}
-                                        placeholder="Briefly explain your reason..."
+                                        style={[styles.area, { backgroundColor: isDark ? '#1e293b' : '#f8fafc', borderColor: borderColor, color: textColor }]}
+                                        placeholder="Please provide the reason for your absence..."
                                         value={leaveReason}
                                         onChangeText={setLeaveReason}
                                         multiline
@@ -292,11 +354,16 @@ export default function LeaveDashboard() {
                                     onPress={handleRequestLeave}
                                     disabled={submitting}
                                 >
-                                    <LinearGradient colors={['#10b981', '#059669']} style={styles.submitGrad}>
+                                    <LinearGradient 
+                                        colors={['#10b981', '#059669', '#047857']} 
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={styles.submitGrad}
+                                    >
                                         {submitting ? (
                                             <ActivityIndicator color="white" />
                                         ) : (
-                                            <ThemedText style={styles.submitTxt}>Submit Request</ThemedText>
+                                            <ThemedText style={styles.submitTxt}>Submit Leave Request</ThemedText>
                                         )}
                                     </LinearGradient>
                                 </TouchableOpacity>
@@ -311,52 +378,136 @@ export default function LeaveDashboard() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 55, borderBottomLeftRadius: 35, borderBottomRightRadius: 35 },
+    header: { 
+        paddingTop: Platform.OS === 'ios' ? 60 : 45, 
+        paddingHorizontal: 20, 
+        paddingBottom: 22, 
+        borderBottomLeftRadius: 32, 
+        borderBottomRightRadius: 32,
+        elevation: 8,
+        shadowColor: '#059669',
+        shadowOpacity: 0.25,
+        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 6 }
+    },
     headerNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 20, fontWeight: '900', color: 'white' },
-    patientBadge: { alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, marginTop: 15 },
-    patientId: { color: 'white', fontWeight: '700', fontSize: 13 },
-    main: { flex: 1, marginTop: -15 },
-    filterBar: { marginHorizontal: 18, borderRadius: 22, padding: 20, elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 15, shadowOffset: { width: 0, height: 5 } },
-    sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 15 },
-    months: { flexDirection: 'row' },
-    mBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, marginRight: 8 },
-    mBtnActive: { backgroundColor: '#059669' },
-    mTxt: { fontSize: 12, fontWeight: '600', color: '#64748b' },
-    mTxtActive: { color: 'white' },
-    list: { padding: 20, paddingBottom: 100 },
-    card: { borderRadius: 18, padding: 16, marginBottom: 15, flexDirection: 'row', alignItems: 'center', borderWidth: 1, elevation: 2 },
-    cardDate: { width: 55, height: 55, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+    iconBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    title: { fontSize: 20, fontWeight: '900', color: 'white', letterSpacing: 0.3 },
+    subTitle: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+    headerStatsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 14,
+        gap: 10,
+        flexWrap: 'wrap'
+    },
+    patientBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 14,
+        gap: 6
+    },
+    patientId: { color: 'white', fontWeight: '800', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+    statCountBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 14,
+        gap: 6
+    },
+    statCountText: { color: 'white', fontWeight: '700', fontSize: 12 },
+    main: { flex: 1, marginTop: 12 },
+    filterBar: { marginBottom: 12 },
+    monthsScroll: { paddingHorizontal: 20, gap: 8 },
+    mBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16, borderWidth: 1 },
+    mBtnActive: {},
+    mTxt: { fontSize: 12.5, fontWeight: '700', color: '#64748b' },
+    mTxtActive: { color: 'white', fontWeight: '800' },
+    list: { paddingHorizontal: 20, paddingBottom: 100 },
+    card: { 
+        borderRadius: 24, 
+        marginBottom: 16, 
+        borderWidth: 1, 
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+        position: 'relative',
+        overflow: 'hidden'
+    },
+    cardAccentBar: {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: 6,
+    },
+    cardInner: {
+        padding: 16,
+        paddingLeft: 20
+    },
+    cardHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start'
+    },
+    cardDate: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
     dateNum: { fontSize: 18, fontWeight: '900', color: '#059669' },
-    dateMonth: { fontSize: 10, fontWeight: '700', color: '#10b981', textTransform: 'uppercase' },
-    cardContent: { flex: 1, marginLeft: 15 },
+    dateMonth: { fontSize: 10.5, fontWeight: '800', color: '#059669', textTransform: 'uppercase' },
+    cardContent: { flex: 1, marginLeft: 14 },
     cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-    cardReason: { flex: 1, fontSize: 14, fontWeight: '700', marginRight: 10 },
-    badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-    badgeText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-    cardDetail: { marginTop: 12, paddingTop: 10, borderTopWidth: 1 },
-    rejectBox: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-    rejectTxt: { fontSize: 12, marginLeft: 5, flex: 1, fontStyle: 'italic' },
-    approvedTxt: { fontSize: 11, fontWeight: '500' },
+    cardReason: { flex: 1, fontSize: 13.5, fontWeight: '700', marginRight: 10, lineHeight: 19 },
+    badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10 },
+    badgeText: { fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.3 },
+    cardDetail: { marginTop: 10, paddingTop: 8, borderTopWidth: 1 },
+    rejectBox: { flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 4 },
+    rejectTxt: { fontSize: 11.5, flex: 1, fontStyle: 'italic', fontWeight: '600' },
+    approvedTxt: { fontSize: 11, fontWeight: '600' },
     fab: { position: 'absolute', bottom: 30, right: 25 },
-    fabGradient: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 5 } },
-    empty: { alignItems: 'center', marginTop: 60 },
-    emptyTitle: { fontSize: 18, fontWeight: '800', marginTop: 15 },
-    emptySub: { fontSize: 14, textAlign: 'center', marginTop: 5, paddingHorizontal: 40 },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    sheet: { borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, maxHeight: height * 0.8 },
-    sheetBar: { width: 40, height: 5, backgroundColor: '#e2e8f0', borderRadius: 10, alignSelf: 'center', marginBottom: 15 },
-    sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-    sheetTitle: { fontSize: 22, fontWeight: '900' },
-    sheetClose: { padding: 5 },
-    field: { marginBottom: 20 },
-    fieldLabel: { fontSize: 14, fontWeight: '700', color: '#475569', marginBottom: 8 },
-    inputContainer: { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
-    datePickerBtn: { flexDirection: 'row', alignItems: 'center', padding: 14 },
-    dateBtnTxt: { marginLeft: 10, fontSize: 16, fontWeight: '600' },
-    area: { padding: 14, borderRadius: 14, borderWidth: 1, minHeight: 100, textAlignVertical: 'top', fontSize: 15 },
-    submit: { borderRadius: 15, overflow: 'hidden', marginTop: 10 },
-    submitGrad: { paddingVertical: 18, alignItems: 'center' },
-    submitTxt: { color: 'white', fontSize: 16, fontWeight: '800' },
+    fabGradient: { 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        elevation: 8, 
+        shadowColor: '#059669', 
+        shadowOpacity: 0.35, 
+        shadowRadius: 12, 
+        shadowOffset: { width: 0, height: 6 } 
+    },
+    empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: 40 },
+    emptyIconCircle: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16
+    },
+    emptyTitle: { fontSize: 18, fontWeight: '900' },
+    emptySub: { fontSize: 13.5, textAlign: 'center', marginTop: 6, lineHeight: 20 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    sheet: { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: height * 0.85 },
+    sheetBar: { width: 44, height: 5, backgroundColor: '#cbd5e1', borderRadius: 3, alignSelf: 'center', marginBottom: 14 },
+    sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    sheetTitle: { fontSize: 20, fontWeight: '900' },
+    sheetSubTitle: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+    sheetClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(100,116,139,0.12)', justifyContent: 'center', alignItems: 'center' },
+    field: { marginBottom: 18 },
+    fieldLabel: { fontSize: 11.5, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
+    inputContainer: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+    datePickerBtn: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
+    dateBtnTxt: { fontSize: 15, fontWeight: '700' },
+    area: { padding: 14, borderRadius: 16, borderWidth: 1, minHeight: 90, textAlignVertical: 'top', fontSize: 14.5, fontWeight: '600' },
+    submit: { borderRadius: 18, overflow: 'hidden', marginTop: 10 },
+    submitGrad: { paddingVertical: 16, alignItems: 'center' },
+    submitTxt: { color: 'white', fontSize: 15.5, fontWeight: '900' },
 });
+
