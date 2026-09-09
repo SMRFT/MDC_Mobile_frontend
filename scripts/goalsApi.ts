@@ -123,3 +123,16 @@ export const confirmSessionAttendance = async (id: string, confirmedBy?: string)
         throw error;
     }
 };
+
+export const fetchPatientAttendance = async (regNo: string) => {
+    try {
+        const response = await axios.get(`${API_URL}/search/`, {
+            params: { reg_no: regNo }
+        });
+        return response.data?.attendance || [];
+    } catch (error: any) {
+        console.error("Error fetching patient attendance:", error);
+        return [];
+    }
+};
+

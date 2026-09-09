@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     View, StyleSheet, ScrollView, TouchableOpacity, FlatList,
-    Dimensions, StatusBar
+    Dimensions, StatusBar, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,12 +11,13 @@ import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
 import { SessionMatrixGrid } from '@/components/SessionMatrixGrid';
+import { fetchPatientAttendance } from '@/scripts/goalsApi';
 
 const { height } = Dimensions.get('window');
 
 const parseTherapyDetails = (therapyDetails: any): any[] => {
     if (!therapyDetails) return [];
-    if (typeof therapyDetails !== 'string') return therapyDetails;
+    if (typeof therapyDetails !== 'string') return Array.isArray(therapyDetails) ? therapyDetails : [];
 
     try {
         return JSON.parse(therapyDetails);
@@ -66,6 +67,10 @@ export default function AttendanceHistory() {
     const params = useLocalSearchParams();
     const regNo = params.regNo as string;
     const initialAttendance = params.attendance ? JSON.parse(params.attendance as string) : [];
+    const [attendanceList, setAttendanceList] = useState<any[]>(initialAttendance);
+    const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
     const { resolvedTheme } = useTheme();
 
     const backgroundColor = useThemeColor({}, 'background');
@@ -75,19 +80,41 @@ export default function AttendanceHistory() {
     const textColor = useThemeColor({}, 'text');
     const primaryColor = useThemeColor({}, 'primary');
 
+    const loadAttendance = async (isPullRefresh = false) => {
+        if (!regNo) return;
+        if (isPullRefresh) setRefreshing(true);
+        else if (attendanceList.length === 0) setLoading(true);
+
+        try {
+            const data = await fetchPatientAttendance(regNo);
+            if (data && Array.isArray(data)) {
+                setAttendanceList(data);
+            }
+        } catch (error) {
+            console.error("Failed to load patient attendance:", error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        loadAttendance();
+    }, [regNo]);
+
     const years = useMemo(() => {
-        const uniqueYears = [...new Set(initialAttendance.map((item: any) =>
+        const uniqueYears = [...new Set(attendanceList.map((item: any) =>
             new Date(item.attendance_date).getFullYear().toString()
         ))];
         const sorted = (uniqueYears as string[]).sort((a, b) => parseInt(b) - parseInt(a));
         return ['All', ...sorted];
-    }, [initialAttendance]);
+    }, [attendanceList]);
 
     const [selectedYear, setSelectedYear] = useState('All');
     const [viewMode, setViewMode] = useState<'matrix' | 'list'>('matrix');
 
     const filteredAttendance = useMemo(() => {
-        let filtered = initialAttendance;
+        let filtered = attendanceList;
         if (selectedYear !== 'All') {
             filtered = filtered.filter((item: any) =>
                 new Date(item.attendance_date).getFullYear().toString() === selectedYear
@@ -96,27 +123,7 @@ export default function AttendanceHistory() {
         return filtered.sort((a: any, b: any) =>
             new Date(b.attendance_date).getTime() - new Date(a.attendance_date).getTime()
         );
-    }, [initialAttendance, selectedYear]);
-
-    const SummaryCard = () => {
-        const totalSessions = initialAttendance.length;
-        const totalPaid = initialAttendance.reduce((acc: number, item: any) =>
-            acc + (parseFloat(item.total_amount_paid) || 0), 0);
-
-        return (
-            <View style={[styles.summaryCard, { backgroundColor: cardBg }]}>
-                <View style={styles.summaryItem}>
-                    <ThemedText style={styles.summaryVal}>{totalSessions}</ThemedText>
-                    <ThemedText style={[styles.summaryLabel, { color: textSecondary }]}>Total Sessions</ThemedText>
-                </View>
-                <View style={[styles.summaryDivider, { backgroundColor: borderColor }]} />
-                <View style={styles.summaryItem}>
-                    <ThemedText style={styles.summaryVal}>₹{totalPaid.toLocaleString()}</ThemedText>
-                    <ThemedText style={[styles.summaryLabel, { color: textSecondary }]}>Total Paid</ThemedText>
-                </View>
-            </View>
-        );
-    };
+    }, [attendanceList, selectedYear]);
 
     const AttendanceItem = ({ item }: { item: any }) => {
         const dateObj = new Date(item.attendance_date);
@@ -190,7 +197,6 @@ export default function AttendanceHistory() {
                     <View style={{ width: 40 }} />
                 </View>
                 <ThemedText style={styles.patientId}>{regNo}</ThemedText>
-                <SummaryCard />
             </LinearGradient>
 
             <View style={styles.main}>
@@ -241,9 +247,12 @@ export default function AttendanceHistory() {
                         <FlatList
                             data={filteredAttendance}
                             renderItem={AttendanceItem}
-                            keyExtractor={(item, index) => index.toString()}
+                            keyExtractor={(item, index) => item._id || item.id || index.toString()}
                             contentContainerStyle={styles.list}
                             showsVerticalScrollIndicator={false}
+                            refreshControl={
+                                <RefreshControl refreshing={refreshing} onRefresh={() => loadAttendance(true)} />
+                            }
                             ListEmptyComponent={
                                 <View style={styles.empty}>
                                     <Ionicons name="document-text-outline" size={80} color={borderColor} />
@@ -261,17 +270,12 @@ export default function AttendanceHistory() {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 60, borderBottomLeftRadius: 40, borderBottomRightRadius: 40 },
+    header: { paddingTop: 60, paddingHorizontal: 24, paddingBottom: 22, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
     navBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     backBtn: { width: 44, height: 44, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
     title: { fontSize: 24, fontWeight: '900', color: 'white' },
     patientId: { color: 'rgba(255,255,255,0.8)', textAlign: 'center', marginTop: 10, fontWeight: '700', fontSize: 13, textTransform: 'uppercase' },
-    summaryCard: { position: 'absolute', bottom: -30, left: 24, right: 24, borderRadius: 25, height: 90, flexDirection: 'row', elevation: 12, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 15, shadowOffset: { width: 0, height: 10 } },
-    summaryItem: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    summaryVal: { fontSize: 22, fontWeight: '900' },
-    summaryLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-    summaryDivider: { width: 1, height: '50%', alignSelf: 'center' },
-    main: { flex: 1, marginTop: 65 },
+    main: { flex: 1, marginTop: 16 },
     viewToggleContainer: { flexDirection: 'row', marginHorizontal: 24, marginBottom: 12, padding: 4, borderRadius: 16, borderWidth: 1 },
     toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 12 },
     toggleBtnActive: { backgroundColor: '#4f46e5' },

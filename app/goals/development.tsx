@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, StyleSheet, ScrollView, TouchableOpacity, Modal,
-    ActivityIndicator, Alert, FlatList, Dimensions, Image
+    ActivityIndicator, Alert, FlatList, Dimensions
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,8 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useTheme } from '@/context/ThemeContext';
-
-const { width } = Dimensions.get('window');
+import PieChartCard, { PieChartSliceData } from '@/components/PieChartCard';
 
 const STATUS_MAP: any = {
     'N': { label: 'Not Started', color: '#64748b', bg: '#f1f5f9' },
@@ -23,7 +22,7 @@ const STATUS_MAP: any = {
     'Emerging': { label: 'Emerging', color: '#d97706', bg: '#fef3c7' },
     'Developing': { label: 'Developing', color: '#2563eb', bg: '#dbeafe' },
     'Achieved': { label: 'Achieved', color: '#15803d', bg: '#dcfce7' },
-	'Pending': { label: 'Pending', color: '#64748b', bg: '#f1f5f9' }
+    'Pending': { label: 'Pending', color: '#64748b', bg: '#f1f5f9' }
 };
 
 const THERAPY_MAP: Record<string, string> = {
@@ -80,6 +79,7 @@ export default function DevelopmentalGoalsScreen() {
     const [loading, setLoading] = useState(false);
     const [selectedGoal, setSelectedGoal] = useState<any>(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [selectedTherapy, setSelectedTherapy] = useState('All');
 
     // Theme tokens
     const backgroundColor = useThemeColor({}, 'background');
@@ -109,6 +109,101 @@ export default function DevelopmentalGoalsScreen() {
         }
     };
 
+    // Extract unique therapy types
+    const availableTherapies = useMemo(() => {
+        const set = new Set<string>();
+        goalsList.forEach(item => {
+            if (Array.isArray(item.development_goals)) {
+                item.development_goals.forEach((g: any) => {
+                    const tName = getTherapyName(g);
+                    if (tName) set.add(tName);
+                });
+            }
+        });
+        return ['All', ...Array.from(set)];
+    }, [goalsList]);
+
+    // Filter goals list
+    const filteredGoalsList = useMemo(() => {
+        if (selectedTherapy === 'All') return goalsList;
+        return goalsList.filter(item => {
+            if (Array.isArray(item.development_goals)) {
+                return item.development_goals.some((g: any) => getTherapyName(g) === selectedTherapy);
+            }
+            return false;
+        });
+    }, [goalsList, selectedTherapy]);
+
+    // Calculate Pie Chart metrics and status distribution
+    const { pieChartData, totalGoalsCount, averageImprovement } = useMemo(() => {
+        let achieved = 0;
+        let developing = 0;
+        let emerging = 0;
+        let notStarted = 0;
+        let totalPercent = 0;
+        let goalsWithPercent = 0;
+
+        filteredGoalsList.forEach(item => {
+            const goals = Array.isArray(item.development_goals) ? item.development_goals : [];
+            const activeGoals = selectedTherapy === 'All' 
+                ? goals 
+                : goals.filter((g: any) => getTherapyName(g) === selectedTherapy);
+
+            activeGoals.forEach((g: any) => {
+                const s = (g?.status || '').toLowerCase().trim();
+                if (s === 'achieved' || s === 'a') achieved++;
+                else if (s === 'developing' || s === 'd') developing++;
+                else if (s === 'emerging' || s === 'e') emerging++;
+                else notStarted++;
+
+                if (typeof g?.percentage === 'number') {
+                    totalPercent += g.percentage;
+                    goalsWithPercent++;
+                }
+            });
+        });
+
+        const total = achieved + developing + emerging + notStarted;
+        const avgPercentage = goalsWithPercent > 0 ? (totalPercent / goalsWithPercent) : undefined;
+
+        const data: PieChartSliceData[] = [
+            {
+                key: 'Achieved',
+                label: 'Achieved',
+                count: achieved,
+                color: '#15803d',
+                lightBg: '#dcfce7',
+                darkBg: '#14532d'
+            },
+            {
+                key: 'Developing',
+                label: 'Developing',
+                count: developing,
+                color: '#2563eb',
+                lightBg: '#dbeafe',
+                darkBg: '#1e3a8a'
+            },
+            {
+                key: 'Emerging',
+                label: 'Emerging',
+                count: emerging,
+                color: '#d97706',
+                lightBg: '#fef3c7',
+                darkBg: '#78350f'
+            },
+            {
+                key: 'Not Started',
+                label: 'Not Started',
+                count: notStarted,
+                color: '#64748b',
+                lightBg: '#f1f5f9',
+                darkBg: '#334155'
+            },
+        ];
+
+        return { pieChartData: data, totalGoalsCount: total, averageImprovement: avgPercentage };
+    }, [filteredGoalsList, selectedTherapy]);
+
     const formatDate = (dateStr: string) => {
         if (!dateStr) return '';
         return dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
@@ -123,50 +218,99 @@ export default function DevelopmentalGoalsScreen() {
         );
     };
 
-    const renderGoalItem = ({ item }: { item: any }) => (
-        <TouchableOpacity 
-            style={[styles.card, { backgroundColor: cardBg, borderColor: borderColor }]} 
-            onPress={() => { setSelectedGoal(item); setModalVisible(true); }}
-        >
-            <View style={styles.cardHeader}>
-                <View style={[styles.dateBadge, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#eff6ff' }]}>
-                    <Ionicons name="calendar-outline" size={14} color="#2563eb" />
-                    <ThemedText style={styles.dateText}>{formatDate(item.date)}</ThemedText>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={borderColor} />
-            </View>
+    const renderGoalItem = ({ item }: { item: any }) => {
+        const allGoals = item.development_goals || [];
+        const displayedGoals = selectedTherapy === 'All'
+            ? allGoals
+            : allGoals.filter((g: any) => getTherapyName(g) === selectedTherapy);
 
-            <View style={styles.cardBody}>
-                <ThemedText style={styles.previewLabel}>Goals ({item.development_goals?.length || 0})</ThemedText>
-                {item.development_goals?.slice(0, 3).map((g: any, i: number) => (
-                    <View key={i} style={styles.goalRowPreviewContainer}>
-                        <View style={styles.goalRowPreview}>
-                            <View style={styles.goalInfo}>
-                                <View style={[styles.dot, { backgroundColor: STATUS_MAP[g.status]?.color || '#cbd5e1' }]} />
-                                <ThemedText style={styles.previewText} numberOfLines={1}>
-                                    {g.goal}
-                                </ThemedText>
-                            </View>
-                            <StatusBadge status={g.status} />
-                        </View>
-                        {(getTherapyName(g) || getDomainName(g) || getLevelName(g)) ? (
-                            <View style={styles.previewMetaRow}>
-                                {[
-                                    getTherapyName(g),
-                                    getDomainName(g),
-                                    getLevelName(g)
-                                ].filter(Boolean).map((meta: string, metaIdx: number) => (
-                                    <View key={metaIdx} style={[styles.miniBadge, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f1f5f9' }]}>
-                                        <ThemedText style={styles.miniBadgeText}>{meta}</ThemedText>
-                                    </View>
-                                ))}
-                            </View>
-                        ) : null}
+        // Therapies present in this record
+        const distinctTherapies = [...new Set(allGoals.map((g: any) => getTherapyName(g)).filter(Boolean))] as string[];
+        const therapistDisplay = item.therapist_name || item.created_by_name || item.lastmodified_by_name || '';
+
+        return (
+            <TouchableOpacity 
+                style={[styles.card, { backgroundColor: cardBg, borderColor: borderColor }]} 
+                onPress={() => { setSelectedGoal(item); setModalVisible(true); }}
+                activeOpacity={0.85}
+            >
+                <View style={styles.cardHeader}>
+                    <View style={[styles.dateBadge, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eff6ff', borderColor: '#bfdbfe' }]}>
+                        <Ionicons name="calendar-outline" size={14} color="#2563eb" />
+                        <ThemedText style={styles.dateText}>{formatDate(item.date)}</ThemedText>
                     </View>
-                ))}
-            </View>
-        </TouchableOpacity>
-    );
+
+                    {therapistDisplay ? (
+                        <View style={[styles.therapistBadgePill, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eff6ff', borderColor: '#bfdbfe' }]}>
+                            <Ionicons name="person-circle-outline" size={14} color="#4338ca" style={{ marginRight: 4 }} />
+                            <ThemedText style={styles.therapistBadgeText} numberOfLines={1}>
+                                {therapistDisplay}
+                            </ThemedText>
+                        </View>
+                    ) : null}
+
+                    <Ionicons name="chevron-forward" size={18} color={primaryColor} />
+                </View>
+
+                {/* Therapy Badges */}
+                {distinctTherapies.length > 0 && (
+                    <View style={styles.therapyBadgesRow}>
+                        {distinctTherapies.map((tName, tIdx) => (
+                            <View key={tIdx} style={[styles.therapyBadgePill, { backgroundColor: resolvedTheme === 'dark' ? '#312e81' : '#e0e7ff', borderColor: '#818cf8' }]}>
+                                <Ionicons name="medical-outline" size={11} color="#4338ca" style={{ marginRight: 4 }} />
+                                <ThemedText style={styles.therapyBadgePillText}>{tName}</ThemedText>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                <View style={styles.cardBody}>
+                    <ThemedText style={styles.previewLabel}>
+                        Goals ({displayedGoals.length})
+                    </ThemedText>
+                    {displayedGoals.slice(0, 3).map((g: any, i: number) => (
+                        <View key={i} style={styles.goalRowPreviewContainer}>
+                            <View style={styles.goalRowPreview}>
+                                <View style={styles.goalInfo}>
+                                    <View style={[styles.dot, { backgroundColor: STATUS_MAP[g.status]?.color || '#cbd5e1' }]} />
+                                    <ThemedText style={styles.previewText} numberOfLines={1}>
+                                        {g.goal}
+                                    </ThemedText>
+                                </View>
+                                <StatusBadge status={g.status} />
+                            </View>
+                            {(getTherapyName(g) || getDomainName(g) || getLevelName(g) || g.therapist_name || item.therapist_name) ? (
+                                <View style={styles.previewMetaRow}>
+                                    {[
+                                        getTherapyName(g),
+                                        getDomainName(g),
+                                        getLevelName(g)
+                                    ].filter(Boolean).map((meta: string, metaIdx: number) => (
+                                        <View key={metaIdx} style={[styles.miniBadge, { backgroundColor: resolvedTheme === 'dark' ? '#334155' : '#f1f5f9' }]}>
+                                            <ThemedText style={styles.miniBadgeText}>{meta}</ThemedText>
+                                        </View>
+                                    ))}
+                                    {(g.therapist_name || item.therapist_name || therapistDisplay) ? (
+                                        <View style={[styles.miniBadge, { backgroundColor: resolvedTheme === 'dark' ? '#312e81' : '#e0e7ff', flexDirection: 'row', alignItems: 'center' }]}>
+                                            <Ionicons name="person-circle-outline" size={10} color="#4338ca" style={{ marginRight: 2 }} />
+                                            <ThemedText style={[styles.miniBadgeText, { color: '#4338ca', fontWeight: '700' }]}>
+                                                {g.therapist_name || item.therapist_name || therapistDisplay}
+                                            </ThemedText>
+                                        </View>
+                                    ) : null}
+                                </View>
+                            ) : null}
+                        </View>
+                    ))}
+                    {displayedGoals.length > 3 && (
+                        <ThemedText style={{ fontSize: 11, fontWeight: '800', color: primaryColor, marginLeft: 18, marginTop: 4 }}>
+                            +{displayedGoals.length - 3} more goals...
+                        </ThemedText>
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <ThemedView style={styles.container}>
@@ -185,25 +329,89 @@ export default function DevelopmentalGoalsScreen() {
             </LinearGradient>
 
             <View style={styles.main}>
+                {/* Therapy Filter Tabs */}
+                {availableTherapies.length > 1 && (
+                    <View style={styles.filterSection}>
+                        <View style={styles.filterHeader}>
+                            <Ionicons name="filter" size={15} color={textSecondary} />
+                            <ThemedText style={[styles.filterTitle, { color: textSecondary }]}>
+                                Filter by Therapy Type
+                            </ThemedText>
+                        </View>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.therapyFilterScroll}
+                        >
+                            {availableTherapies.map((tKey) => {
+                                const isSelected = selectedTherapy === tKey;
+                                return (
+                                    <TouchableOpacity
+                                        key={tKey}
+                                        onPress={() => setSelectedTherapy(tKey)}
+                                        style={[
+                                            styles.therapyFilterBtn,
+                                            { backgroundColor: isSelected ? '#4338ca' : cardBg, borderColor: isSelected ? '#4338ca' : borderColor }
+                                        ]}
+                                    >
+                                        <Ionicons
+                                            name={tKey === 'All' ? 'grid-outline' : 'medical-outline'}
+                                            size={13}
+                                            color={isSelected ? 'white' : '#4338ca'}
+                                            style={{ marginRight: 5 }}
+                                        />
+                                        <ThemedText
+                                            style={[
+                                                styles.therapyFilterText,
+                                                { color: isSelected ? 'white' : textColor, fontWeight: isSelected ? '900' : '700' }
+                                            ]}
+                                        >
+                                            {tKey === 'All' ? 'All Therapies' : tKey}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                )}
+
                 {loading ? (
                     <ActivityIndicator style={{ marginTop: 50 }} color="#4338ca" size="large" />
                 ) : (
                     <FlatList
-                        data={goalsList}
+                        data={filteredGoalsList}
                         renderItem={renderGoalItem}
-                        keyExtractor={(item, index) => index.toString()}
+                        keyExtractor={(item, index) => item._id || index.toString()}
                         contentContainerStyle={styles.list}
+                        showsVerticalScrollIndicator={false}
+                        ListHeaderComponent={
+                            goalsList.length > 0 ? (
+                                <PieChartCard
+                                    title="Developmental Improvement"
+                                    subtitle="Goals Status Distribution"
+                                    data={pieChartData}
+                                    totalGoals={totalGoalsCount}
+                                    averagePercentage={averageImprovement}
+                                    selectedFilter={selectedTherapy}
+                                />
+                            ) : null
+                        }
                         ListEmptyComponent={
                             <View style={styles.empty}>
                                 <Ionicons name="rocket-outline" size={80} color={borderColor} />
                                 <ThemedText style={[styles.emptyTitle, { color: textSecondary }]}>No Records Found.</ThemedText>
-                                <ThemedText style={[styles.emptySub, { color: textSecondary }]}>No developmental progress records available.</ThemedText>
+                                <ThemedText style={[styles.emptySub, { color: textSecondary }]}>
+                                    {selectedTherapy !== 'All'
+                                        ? `No goals found for "${selectedTherapy}".`
+                                        : 'No developmental progress records available.'}
+                                </ThemedText>
                             </View>
                         }
                     />
                 )}
             </View>
 
+            {/* Modal */}
             <Modal visible={modalVisible} animationType="slide">
                 <ThemedView style={styles.modalContainer}>
                     <View style={[styles.modalHeader, { borderBottomColor: borderColor }]}>
@@ -214,9 +422,19 @@ export default function DevelopmentalGoalsScreen() {
                     </View>
 
                     <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-                        <View style={styles.modalDateInfo}>
-                            <Ionicons name="calendar" size={18} color={primaryColor} />
-                            <ThemedText style={styles.modalDate}>{formatDate(selectedGoal?.date)}</ThemedText>
+                        <View style={[styles.modalMetaContainer, { backgroundColor: cardBg, borderColor }]}>
+                            <View style={styles.modalDateInfo}>
+                                <Ionicons name="calendar" size={16} color={primaryColor} />
+                                <ThemedText style={styles.modalDate}>{formatDate(selectedGoal?.date)}</ThemedText>
+                            </View>
+                            {(selectedGoal?.therapist_name || selectedGoal?.created_by_name || selectedGoal?.lastmodified_by_name) ? (
+                                <View style={[styles.modalTherapistBadge, { backgroundColor: resolvedTheme === 'dark' ? '#1e1b4b' : '#eff6ff', borderColor: '#bfdbfe' }]}>
+                                    <Ionicons name="person-circle" size={16} color="#4338ca" style={{ marginRight: 5 }} />
+                                    <ThemedText style={styles.modalTherapistText}>
+                                        Therapist: {selectedGoal?.therapist_name || selectedGoal?.created_by_name || selectedGoal?.lastmodified_by_name}
+                                    </ThemedText>
+                                </View>
+                            ) : null}
                         </View>
 
                         <ThemedText style={styles.sectionLabel}>Goal Progression</ThemedText>
@@ -257,6 +475,15 @@ export default function DevelopmentalGoalsScreen() {
                                             </ThemedText>
                                         </View>
                                     ) : null}
+
+                                    {(g.therapist_name || selectedGoal?.therapist_name || selectedGoal?.author_name || selectedGoal?.created_by_name) ? (
+                                        <View style={[styles.tagBadge, { backgroundColor: resolvedTheme === 'dark' ? '#312e81' : '#e0e7ff' }]}>
+                                            <Ionicons name="person-circle-outline" size={12} color="#4338ca" />
+                                            <ThemedText style={[styles.tagText, { color: '#4338ca', fontWeight: '800' }]}>
+                                                Therapist: {g.therapist_name || selectedGoal?.therapist_name || selectedGoal?.author_name || selectedGoal?.created_by_name}
+                                            </ThemedText>
+                                        </View>
+                                    ) : null}
                                 </View>
 
                                 <ThemedText style={styles.detailGoalText}>{g.goal}</ThemedText>
@@ -286,13 +513,24 @@ const styles = StyleSheet.create({
     title: { fontSize: 20, fontWeight: '900', color: 'white' },
     regDisplay: { color: 'white', textAlign: 'center', marginTop: 15, fontWeight: '700', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 },
     main: { flex: 1, marginTop: 10 },
-    list: { padding: 20, paddingBottom: 50 },
-    card: { borderRadius: 24, padding: 20, marginBottom: 18, borderLeftWidth: 8, borderLeftColor: '#4338ca', elevation: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, borderWidth: 1 },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-    dateBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+    filterSection: { paddingHorizontal: 20, marginBottom: 12 },
+    filterHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+    filterTitle: { fontSize: 11, fontWeight: '900', marginLeft: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+    therapyFilterScroll: { paddingRight: 10 },
+    therapyFilterBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14, marginRight: 8, borderWidth: 1 },
+    therapyFilterText: { fontSize: 13 },
+    list: { paddingBottom: 50 },
+    card: { borderRadius: 24, padding: 20, marginHorizontal: 20, marginBottom: 18, borderLeftWidth: 8, borderLeftColor: '#4338ca', elevation: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, borderWidth: 1 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    dateBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
     dateText: { fontSize: 12, fontWeight: '800', marginLeft: 6, color: '#2563eb' },
+    therapistBadgePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, maxWidth: '52%' },
+    therapistBadgeText: { fontSize: 11, fontWeight: '800', color: '#4338ca' },
+    therapyBadgesRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10, gap: 6 },
+    therapyBadgePill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1 },
+    therapyBadgePillText: { fontSize: 11, fontWeight: '800', color: '#4338ca' },
     cardBody: { marginBottom: 5 },
-    previewLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 12 },
+    previewLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10 },
     goalRowPreviewContainer: { marginBottom: 10 },
     goalRowPreview: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
     previewMetaRow: { flexDirection: 'row', flexWrap: 'wrap', marginLeft: 18, marginTop: 2 },
@@ -311,8 +549,11 @@ const styles = StyleSheet.create({
     modalTitle: { fontSize: 20, fontWeight: '900' },
     closeBtn: { padding: 5 },
     modalScroll: { padding: 20 },
-    modalDateInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-    modalDate: { fontSize: 16, fontWeight: '800', marginLeft: 10 },
+    modalMetaContainer: { borderRadius: 16, padding: 14, marginBottom: 20, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
+    modalDateInfo: { flexDirection: 'row', alignItems: 'center' },
+    modalDate: { fontSize: 14, fontWeight: '800', marginLeft: 8 },
+    modalTherapistBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
+    modalTherapistText: { fontSize: 12, fontWeight: '800', color: '#4338ca' },
     sectionLabel: { fontSize: 12, fontWeight: '900', color: '#94a3b8', textTransform: 'uppercase', marginBottom: 15, letterSpacing: 1 },
     detailGoalCard: { borderRadius: 20, padding: 20, marginBottom: 15, borderWidth: 1 },
     goalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },

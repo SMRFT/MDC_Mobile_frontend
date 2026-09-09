@@ -9,10 +9,19 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://test.shinova.in/_b_a_c_k_e_n_d/MDC_Mobile_App"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://shinova.in/_b_a_c_k_e_n_d/MDC_Mobile_App"
+      }
     }
   },
   "submit": {

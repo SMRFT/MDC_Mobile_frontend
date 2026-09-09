@@ -462,7 +462,7 @@ export default function DetailsScreen() {
                         <View style={styles.btnIcon}>
                             <Ionicons name="stats-chart" size={24} color="white" />
                         </View>
-                        <ThemedText style={styles.btnText}>Goals Assessment</ThemedText>
+                        <ThemedText style={styles.btnText}>Developmental Activity</ThemedText>
                         <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
                     </TouchableOpacity>
 

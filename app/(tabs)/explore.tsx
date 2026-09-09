@@ -38,7 +38,7 @@ export default function TabTwoScreen() {
         style={{ backgroundColor: '#3b5998', padding: 15, borderRadius: 10, marginVertical: 10, alignItems: 'center' }}
         onPress={() => router.push('/goals')}
       >
-        <ThemedText style={{ color: 'white', fontWeight: 'bold' }}>Go to Goals Assessment</ThemedText>
+        <ThemedText style={{ color: 'white', fontWeight: 'bold' }}>Go to Developmental Activity</ThemedText>
       </TouchableOpacity>
       <ThemedText>This app includes example code to help you get started.</ThemedText>
       <Collapsible title="File-based routing">
