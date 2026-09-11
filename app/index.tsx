@@ -84,6 +84,28 @@ export default function LoginScreen() {
     }
   };
 
+  const clearCredentials = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem('user_credentials');
+        }
+      } catch (e) {
+        console.error("Error clearing credentials on web:", e);
+      }
+      return;
+    }
+    try {
+      if (!CREDENTIALS_FILE) return;
+      const fileInfo = await FileSystem.getInfoAsync(CREDENTIALS_FILE);
+      if (fileInfo.exists) {
+        await FileSystem.deleteAsync(CREDENTIALS_FILE, { idempotent: true });
+      }
+    } catch (e) {
+      console.error("Error clearing credentials:", e);
+    }
+  };
+
   useEffect(() => {
     const checkSavedCredentials = async () => {
       try {
@@ -123,8 +145,13 @@ export default function LoginScreen() {
             setModalVisible(true);
           }
         }
-      } catch (err) {
-        console.error("Auto login error:", err);
+      } catch (err: any) {
+        if (err?.response?.status === 401) {
+          console.warn("Saved credentials expired or invalid (401). Clearing saved session.");
+          await clearCredentials();
+        } else {
+          console.error("Auto login error:", err);
+        }
       } finally {
         setAutoLoggingIn(false);
       }
